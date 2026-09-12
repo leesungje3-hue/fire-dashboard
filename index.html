@@ -1,0 +1,2199 @@
+<!DOCTYPE html>
+<html lang="ko" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 검색엔진 노출 방지 태그 -->
+    <meta name="robots" content="noindex, nofollow">
+    <title>실시간 현황</title>
+    <!-- Tailwind CSS & Chart.js & DataLabels Plugin -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@400;600;700;800&display=swap');
+        body { font-family: 'Pretendard', sans-serif; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        details[open] summary ~ * { animation: sweep 0.3s ease-in-out; }
+        @keyframes sweep { 0% { opacity: 1; transform: translateY(-6px); } 100% { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 p-3 sm:p-5 min-h-screen">
+
+    <!-- 🔒 부부 전용 4자리 비밀번호 보안 스크립트 -->
+    <script>
+        (function() {
+            const SECRET_PIN = "7251";
+            const AUTH_KEY = "fire_dashboard_authed_7251";
+
+            if (localStorage.getItem(AUTH_KEY) !== "TRUE") {
+                const userInput = prompt("🔒 부부 전용 대시보드입니다.\n비밀번호 4자리를 입력하세요:");
+                if (userInput === SECRET_PIN) {
+                    localStorage.setItem(AUTH_KEY, "TRUE");
+                } else {
+                    alert("비밀번호가 올바르지 않습니다.");
+                    document.write("<div style='text-align:center; padding:100px 20px; font-family:sans-serif;'><h2>⛔ 접근 권한이 없습니다.</h2><p style='color:#666; margin-top:10px;'>올바른 비밀번호를 입력하셔야 대시보드를 확인하실 수 있습니다.</p></div>");
+                    window.stop();
+                }
+            }
+        })();
+
+        function lockDashboard() {
+            if (confirm("대시보드를 잠그고 로그아웃하시겠습니까?")) {
+                localStorage.removeItem("fire_dashboard_authed_7251");
+                location.reload();
+            }
+        }
+    </script>
+
+    <!-- 상단 헤더 -->
+    <header class="mb-3 text-center relative">
+        <div class="absolute right-0 top-0 flex items-center gap-1.5">
+            <button onclick="refreshAllData()" title="데이터 새로고침" class="p-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg shadow-sm hover:bg-gray-50 active:scale-95 text-xs transition">
+                🔄
+            </button>
+            <button onclick="lockDashboard()" title="대시보드 잠금" class="p-1.5 bg-white border border-gray-200 text-gray-600 rounded-lg shadow-sm hover:bg-gray-50 active:scale-95 text-xs transition">
+                🔒
+            </button>
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">실시간 현황</h1>
+        <p class="text-xs text-emerald-600 font-semibold mt-1 flex items-center justify-center gap-1" id="liveStatus">
+            🟢 FIRE 마스터플랜 & 실시간 시세 완벽 연동 가동 중
+        </p>
+        <p class="text-[10px] text-gray-400 mt-0.5" id="lastUpdatedTime">동기화 대기 중...</p>
+    </header>
+
+    <!-- 📱 상단 플로팅 퀵 점프(Quick Jump) 내비게이션 바 -->
+    <nav class="sticky top-2 z-40 mb-5 -mx-3 px-3 sm:-mx-5 sm:px-5 py-1.5 bg-gray-100/90 backdrop-blur-md border-b border-gray-200 flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <a href="#sec-core-assets" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-green-50 hover:text-green-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>💰</span><span>순자산</span>
+        </a>
+        <a href="#sec-cagr" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-emerald-50 hover:text-emerald-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>📊</span><span>수익률(CAGR)</span>
+        </a>
+        <a href="#sec-stock-tracker" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>📈</span><span>주식수량 (부부분할)</span>
+        </a>
+        <a href="#sec-debt-progress" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-amber-50 hover:text-amber-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>⚡</span><span>대출상환</span>
+        </a>
+        <a href="#sec-live-prices" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-slate-100 hover:text-slate-900 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>📊</span><span>실시간시세</span>
+        </a>
+        <a href="#sec-fire-sim" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-blue-50 hover:text-blue-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>⏳</span><span>FIRE시뮬</span>
+        </a>
+        <a href="#sec-roadmap-table" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>📑</span><span>FIRE 목표(<span id="navTargetYear">2029</span>년)</span>
+        </a>
+        <a href="#sec-fire-dividends" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-purple-50 hover:text-purple-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>💵</span><span>시점별 배당금</span>
+        </a>
+        <a href="#sec-roadmap" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-amber-50 hover:text-amber-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>🎯</span><span>마스터플랜·절세</span>
+        </a>
+        <a href="#sec-news" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-slate-100 hover:text-slate-900 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>📰</span><span>경제뉴스</span>
+        </a>
+        <a href="#sec-account-book" class="px-3 py-1.5 bg-white text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 border border-gray-200 shadow-sm rounded-full text-xs font-bold whitespace-nowrap transition-all active:scale-95 flex items-center gap-1">
+            <span>💸</span><span>가계부</span>
+        </a>
+    </nav>
+
+    <!-- 1. 보글헤드 & FIRE 핵심 철학 10선 (300선 무한 랜덤 셔플) -->
+    <section class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-4 rounded-2xl shadow-md mb-6">
+        <div class="flex justify-between items-center mb-3 border-b border-blue-800/80 pb-2">
+            <h2 class="text-xs sm:text-sm font-bold flex items-center gap-1.5">
+                <span>🛡️</span>
+                <span>가슴에 새길 보글헤드 & FIRE 핵심 철학 10선</span>
+            </h2>
+            <button onclick="setTenRandomBogleQuotes()" class="text-[10px] bg-blue-800 hover:bg-blue-700 px-2.5 py-1 rounded text-blue-200 font-semibold transition active:scale-95 flex items-center gap-1">
+                <span>🔄</span><span>300선 셔플</span>
+            </button>
+        </div>
+        <ul class="space-y-2 text-xs italic leading-relaxed opacity-95" id="bogleQuotesList"></ul>
+    </section>
+
+    <!-- 2. 순자산 단독 핵심 카드 [ID: sec-core-assets] -->
+    <section id="sec-core-assets" class="mb-4 scroll-mt-16">
+        <div class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm border-l-4 border-green-500 border border-gray-200">
+            <div class="flex justify-between items-center mb-1">
+                <span class="text-xs sm:text-sm font-bold text-gray-600">순자산 (시트 연동)</span>
+                <span class="text-[10px] bg-green-100 text-green-700 font-bold px-2 py-0.5 rounded-full">실시간</span>
+            </div>
+            <p class="text-2xl sm:text-3xl font-black text-gray-900 my-1" id="netAssets">불러오는 중...</p>
+            <p class="text-xs sm:text-sm text-emerald-600 font-semibold" id="netAssetShortfallText">목표: 계산 중...</p>
+        </div>
+    </section>
+
+    <!-- 3. 기간별 순자산 증감액 & 연평균 환산 수익률 (CAGR) [ID: sec-cagr] -->
+    <section id="sec-cagr" class="bg-white p-4 rounded-xl shadow-sm mb-6 scroll-mt-16 border border-gray-200">
+        <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+            <h2 class="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                <span>📈</span>
+                <span>기간별 순자산 증감 & 연평균 환산 수익률 (CAGR)</span>
+            </h2>
+            <span class="text-[9px] bg-blue-100 text-blue-800 font-bold px-2 py-0.5 rounded">실시간 자동 계산</span>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                    <tr class="border-b border-gray-200 text-gray-500 pb-2 bg-gray-50/60">
+                        <th class="py-2 px-2 font-medium">구분</th>
+                        <th class="py-2 px-2 font-medium text-right whitespace-nowrap">증감액</th>
+                        <th class="py-2 px-2 font-medium text-right whitespace-nowrap">누적 수익률</th>
+                        <th class="py-2 px-2 font-medium text-right whitespace-nowrap">연평균 수익률</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-gray-700">
+                    <tr>
+                        <td class="py-2.5 px-2 font-semibold whitespace-nowrap">20.02 ~ 현재 <span class="text-[10px] text-gray-400 font-normal">(6.5년)</span></td>
+                        <td class="py-2.5 px-2 text-right font-bold whitespace-nowrap" id="cagr2002Change">계산 중...</td>
+                        <td class="py-2.5 px-2 text-right font-semibold whitespace-nowrap" id="cagr2002Return">계산 중...</td>
+                        <td class="py-2.5 px-2 text-right font-bold whitespace-nowrap" id="cagr2002Cagr">계산 중...</td>
+                    </tr>
+                    <tr>
+                        <td class="py-2.5 px-2 font-semibold whitespace-nowrap">연초(26.01) ~ 현재 <span class="text-[10px] text-gray-400 font-normal">(7개월)</span></td>
+                        <td class="py-2.5 px-2 text-right font-bold whitespace-nowrap" id="cagrYtdChange">계산 중...</td>
+                        <td class="py-2.5 px-2 text-right font-semibold whitespace-nowrap" id="cagrYtdReturn">계산 중...</td>
+                        <td class="py-2.5 px-2 text-right font-bold whitespace-nowrap" id="cagrYtdCagr">계산 중...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 4. 📈 핵심 주식 자산 현황 & 수량 모으기 트래커 (SJ/JY 부부 분할 고도화) [ID: sec-stock-tracker] -->
+    <section id="sec-stock-tracker" class="bg-white p-4 sm:p-5 rounded-2xl shadow-sm mb-6 border border-gray-200 scroll-mt-16">
+        <!-- 섹션 상단 헤더 & 멤버 필터 탭 -->
+        <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-4 border-b border-gray-100 pb-3">
+            <div>
+                <h2 class="text-xs sm:text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                    <span>📈</span>
+                    <span>핵심 주식 자산 현황 & 수량 모으기 트래커</span>
+                </h2>
+                <p class="text-[11px] text-gray-500 mt-0.5">All-World 단일 엔진 • SJ(본인) & JY(배우자) 지분 분할 트래킹</p>
+            </div>
+            <!-- Monarch / Kubera 스타일 세그먼트 컨트롤 필터 -->
+            <div class="inline-flex bg-gray-100 p-1 rounded-xl gap-1 text-xs shrink-0 self-start sm:self-auto">
+                <button id="btnFilterAll" onclick="setStockOwnerFilter('ALL')" class="px-3 py-1 text-xs font-bold rounded-lg transition-all bg-white text-gray-900 shadow-sm">
+                    부부 합산
+                </button>
+                <button id="btnFilterSj" onclick="setStockOwnerFilter('SJ')" class="px-3 py-1 text-xs font-bold rounded-lg transition-all text-gray-600 hover:text-indigo-600">
+                    👨 SJ (본인)
+                </button>
+                <button id="btnFilterJy" onclick="setStockOwnerFilter('JY')" class="px-3 py-1 text-xs font-bold rounded-lg transition-all text-gray-600 hover:text-purple-600">
+                    👩 JY (배우자)
+                </button>
+            </div>
+        </div>
+
+        <!-- 부부 주식 총합 요약 미니 카드 (Empower / Kubera 스타일) -->
+        <div class="grid grid-cols-3 gap-2 mb-4 text-center">
+            <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                <span class="text-[10px] text-gray-500 block">부부 총 주식자산</span>
+                <span class="text-sm sm:text-base font-extrabold text-gray-900 block mt-0.5 whitespace-nowrap" id="totalStockValHeader">--원</span>
+                <span class="text-[9px] text-gray-400 font-medium">지분 100%</span>
+            </div>
+            <div class="p-2.5 bg-indigo-50/70 rounded-xl border border-indigo-100">
+                <span class="text-[10px] text-indigo-700 font-semibold block flex items-center justify-center gap-1">
+                    <span>👨</span><span>SJ 보유분</span>
+                </span>
+                <span class="text-sm sm:text-base font-extrabold text-indigo-900 block mt-0.5 whitespace-nowrap" id="totalSjValHeader">--원</span>
+                <span class="text-[9px] text-indigo-600 font-bold" id="totalSjRatioHeader">--%</span>
+            </div>
+            <div class="p-2.5 bg-purple-50/70 rounded-xl border border-purple-100">
+                <span class="text-[10px] text-purple-700 font-semibold block flex items-center justify-center gap-1">
+                    <span>👩</span><span>JY 보유분</span>
+                </span>
+                <span class="text-sm sm:text-base font-extrabold text-purple-900 block mt-0.5 whitespace-nowrap" id="totalJyValHeader">--원</span>
+                <span class="text-[9px] text-purple-600 font-bold" id="totalJyRatioHeader">--%</span>
+            </div>
+        </div>
+
+        <!-- 주식 종목별 카드 그리드 -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+            
+            <!-- 1) VT (해외직투) -->
+            <div class="p-3.5 bg-blue-50/50 rounded-2xl border border-blue-100/90 flex flex-col justify-between shadow-sm hover:shadow transition-shadow">
+                <div>
+                    <!-- 카드 헤더 -->
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="font-black text-blue-950 text-sm block">VT (해외직투)</span>
+                            <span class="text-[10px] text-blue-700 font-medium">글로벌 올월드 주식 100%</span>
+                        </div>
+                        <span class="text-[10px] bg-blue-200/80 text-blue-900 px-2 py-0.5 rounded-full font-bold whitespace-nowrap" id="vtShareRatio">비중 --%</span>
+                    </div>
+
+                    <!-- 총합 수치 -->
+                    <div class="bg-white/80 p-2.5 rounded-xl border border-blue-100 mb-2.5 space-y-1">
+                        <p class="flex justify-between items-center text-[11px]">
+                            <span class="text-gray-500">합산 평가액</span>
+                            <b class="text-sm font-black text-blue-900 whitespace-nowrap" id="vtTotalVal">--원</b>
+                        </p>
+                        <p class="flex justify-between items-center text-[10px]">
+                            <span class="text-gray-500">총 보유수량</span>
+                            <span class="font-bold text-gray-800"><span id="vtQtyVal">--</span> (단가: <b id="vtPriceVal">--</b>)</span>
+                        </p>
+                        <!-- 듀얼 알로케이션 프로그레스 바 -->
+                        <div class="pt-1">
+                            <div class="w-full bg-gray-200 h-1.5 rounded-full flex overflow-hidden">
+                                <div id="vtSplitBarSj" class="bg-indigo-600 h-full transition-all duration-500" style="width: 65%" title="SJ 지분"></div>
+                                <div id="vtSplitBarJy" class="bg-purple-500 h-full transition-all duration-500" style="width: 35%" title="JY 지분"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- SJ vs JY 분할 서브카드 -->
+                    <div class="grid grid-cols-2 gap-1.5 mb-2 text-[11px]">
+                        <!-- SJ -->
+                        <div class="box-sj p-2 bg-indigo-50/70 rounded-xl border border-indigo-100 transition-all">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-indigo-900 text-[10px] flex items-center gap-0.5">
+                                    <span>👨</span><span>SJ</span>
+                                </span>
+                                <span class="text-[9px] text-indigo-600 font-bold" id="vtRatioSj">--%</span>
+                            </div>
+                            <p class="text-gray-800 font-extrabold text-xs" id="vtQtySj">--주</p>
+                            <p class="text-[10px] text-indigo-800 font-semibold" id="vtValSj">--원</p>
+                            <span class="inline-block mt-1 text-[8px] bg-indigo-200/60 text-indigo-800 px-1 py-0.5 rounded">2034 증여</span>
+                        </div>
+                        <!-- JY -->
+                        <div class="box-jy p-2 bg-purple-50/70 rounded-xl border border-purple-100 transition-all">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-purple-900 text-[10px] flex items-center gap-0.5">
+                                    <span>👩</span><span>JY</span>
+                                </span>
+                                <span class="text-[9px] text-purple-600 font-bold" id="vtRatioJy">--%</span>
+                            </div>
+                            <p class="text-gray-800 font-extrabold text-xs" id="vtQtyJy">--주</p>
+                            <p class="text-[10px] text-purple-800 font-semibold" id="vtValJy">--원</p>
+                            <span class="inline-block mt-1 text-[8px] bg-purple-200/60 text-purple-800 px-1 py-0.5 rounded">연 3.8천 이전</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 연초 대비 변동 -->
+                <div class="pt-1.5 border-t border-blue-200/50 text-[10px] flex justify-between items-center text-gray-500">
+                    <span>1월 1일 대비</span>
+                    <b id="vtQtyDiffYtd" class="text-emerald-600 font-bold">계산 중...</b>
+                </div>
+            </div>
+
+            <!-- 2) 절세: TIGER 토탈월드 -->
+            <div class="p-3.5 bg-teal-50/50 rounded-2xl border border-teal-100/90 flex flex-col justify-between shadow-sm hover:shadow transition-shadow">
+                <div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="font-black text-teal-950 text-sm block">절세: TIGER 토탈</span>
+                            <span class="text-[10px] text-teal-700 font-medium">부부 연금저축/ISA 계좌</span>
+                        </div>
+                        <span class="text-[10px] bg-teal-200/80 text-teal-900 px-2 py-0.5 rounded-full font-bold whitespace-nowrap" id="tigerShareRatio">비중 --%</span>
+                    </div>
+
+                    <div class="bg-white/80 p-2.5 rounded-xl border border-teal-100 mb-2.5 space-y-1">
+                        <p class="flex justify-between items-center text-[11px]">
+                            <span class="text-gray-500">합산 평가액</span>
+                            <b class="text-sm font-black text-teal-900 whitespace-nowrap" id="tigerTotalVal">--원</b>
+                        </p>
+                        <p class="flex justify-between items-center text-[10px]">
+                            <span class="text-gray-500">총 보유수량</span>
+                            <span class="font-bold text-gray-800"><span id="tigerQtyVal">--</span> (단가: <b id="tigerPriceVal">--</b>)</span>
+                        </p>
+                        <div class="pt-1">
+                            <div class="w-full bg-gray-200 h-1.5 rounded-full flex overflow-hidden">
+                                <div id="tigerSplitBarSj" class="bg-indigo-600 h-full transition-all duration-500" style="width: 50%"></div>
+                                <div id="tigerSplitBarJy" class="bg-purple-500 h-full transition-all duration-500" style="width: 50%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5 mb-2 text-[11px]">
+                        <div class="box-sj p-2 bg-indigo-50/70 rounded-xl border border-indigo-100 transition-all">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-indigo-900 text-[10px] flex items-center gap-0.5">
+                                    <span>👨</span><span>SJ</span>
+                                </span>
+                                <span class="text-[9px] text-indigo-600 font-bold" id="tigerRatioSj">--%</span>
+                            </div>
+                            <p class="text-gray-800 font-extrabold text-xs" id="tigerQtySj">--주</p>
+                            <p class="text-[10px] text-indigo-800 font-semibold" id="tigerValSj">--원</p>
+                            <span class="inline-block mt-1 text-[8px] bg-indigo-200/60 text-indigo-800 px-1 py-0.5 rounded">연금/ISA</span>
+                        </div>
+                        <div class="box-jy p-2 bg-purple-50/70 rounded-xl border border-purple-100 transition-all">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-purple-900 text-[10px] flex items-center gap-0.5">
+                                    <span>👩</span><span>JY</span>
+                                </span>
+                                <span class="text-[9px] text-purple-600 font-bold" id="tigerRatioJy">--%</span>
+                            </div>
+                            <p class="text-gray-800 font-extrabold text-xs" id="tigerQtyJy">--주</p>
+                            <p class="text-[10px] text-purple-800 font-semibold" id="tigerValJy">--원</p>
+                            <span class="inline-block mt-1 text-[8px] bg-purple-200/60 text-purple-800 px-1 py-0.5 rounded">배당 재투자</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-1.5 border-t border-teal-200/50 text-[10px] flex justify-between items-center text-gray-500">
+                    <span>1월 1일 대비</span>
+                    <b id="tigerQtyDiffYtd" class="text-emerald-600 font-bold">계산 중...</b>
+                </div>
+            </div>
+
+            <!-- 3) 절세: Kodex S&P500 -->
+            <div class="p-3.5 bg-emerald-50/50 rounded-2xl border border-emerald-100/90 flex flex-col justify-between shadow-sm hover:shadow transition-shadow">
+                <div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="font-black text-emerald-950 text-sm block">절세: Kodex S&P</span>
+                            <span class="text-[10px] text-emerald-700 font-medium">기존 절세계좌 적립분</span>
+                        </div>
+                        <span class="text-[10px] bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-full font-bold whitespace-nowrap" id="sp500ShareRatio">비중 --%</span>
+                    </div>
+
+                    <div class="bg-white/80 p-2.5 rounded-xl border border-emerald-100 mb-2.5 space-y-1">
+                        <p class="flex justify-between items-center text-[11px]">
+                            <span class="text-gray-500">합산 평가액</span>
+                            <b class="text-sm font-black text-emerald-900 whitespace-nowrap" id="sp500TotalVal">--원</b>
+                        </p>
+                        <p class="flex justify-between items-center text-[10px]">
+                            <span class="text-gray-500">총 보유수량</span>
+                            <span class="font-bold text-gray-800"><span id="sp500QtyVal">--</span> (단가: <b id="sp500PriceVal">--</b>)</span>
+                        </p>
+                        <div class="pt-1">
+                            <div class="w-full bg-gray-200 h-1.5 rounded-full flex overflow-hidden">
+                                <div id="sp500SplitBarSj" class="bg-indigo-600 h-full transition-all duration-500" style="width: 50%"></div>
+                                <div id="sp500SplitBarJy" class="bg-purple-500 h-full transition-all duration-500" style="width: 50%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5 mb-2 text-[11px]">
+                        <div class="box-sj p-2 bg-indigo-50/70 rounded-xl border border-indigo-100 transition-all">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-indigo-900 text-[10px] flex items-center gap-0.5">
+                                    <span>👨</span><span>SJ</span>
+                                </span>
+                                <span class="text-[9px] text-indigo-600 font-bold" id="sp500RatioSj">--%</span>
+                            </div>
+                            <p class="text-gray-800 font-extrabold text-xs" id="sp500QtySj">--주</p>
+                            <p class="text-[10px] text-indigo-800 font-semibold" id="sp500ValSj">--원</p>
+                            <span class="inline-block mt-1 text-[8px] bg-indigo-200/60 text-indigo-800 px-1 py-0.5 rounded">기존 적립</span>
+                        </div>
+                        <div class="box-jy p-2 bg-purple-50/70 rounded-xl border border-purple-100 transition-all">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-purple-900 text-[10px] flex items-center gap-0.5">
+                                    <span>👩</span><span>JY</span>
+                                </span>
+                                <span class="text-[9px] text-purple-600 font-bold" id="sp500RatioJy">--%</span>
+                            </div>
+                            <p class="text-gray-800 font-extrabold text-xs" id="sp500QtyJy">--주</p>
+                            <p class="text-[10px] text-purple-800 font-semibold" id="sp500ValJy">--원</p>
+                            <span class="inline-block mt-1 text-[8px] bg-purple-200/60 text-purple-800 px-1 py-0.5 rounded">기존 적립</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-1.5 border-t border-emerald-200/50 text-[10px] flex justify-between items-center text-gray-500">
+                    <span>1월 1일 대비</span>
+                    <b id="sp500QtyDiffYtd" class="text-emerald-600 font-bold">계산 중...</b>
+                </div>
+            </div>
+
+            <!-- 4) SGI서울보증 -->
+            <div class="p-3.5 bg-amber-50/50 rounded-2xl border border-amber-100/90 flex flex-col justify-between shadow-sm hover:shadow transition-shadow">
+                <div>
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="font-black text-amber-950 text-sm block">SGI서울보증</span>
+                            <span class="text-[10px] text-amber-700 font-medium">우리사주 단독 보유</span>
+                        </div>
+                        <span class="text-[10px] bg-amber-200/80 text-amber-900 px-2 py-0.5 rounded-full font-bold whitespace-nowrap" id="sgiShareRatio">비중 --%</span>
+                    </div>
+
+                    <div class="bg-white/80 p-2.5 rounded-xl border border-amber-100 mb-2.5 space-y-1">
+                        <p class="flex justify-between items-center text-[11px]">
+                            <span class="text-gray-500">합산 평가액</span>
+                            <b class="text-sm font-black text-amber-900 whitespace-nowrap" id="sgiTotalVal">--원</b>
+                        </p>
+                        <p class="flex justify-between items-center text-[10px]">
+                            <span class="text-gray-500">총 보유수량</span>
+                            <span class="font-bold text-gray-800"><span id="sgiQtyVal">--</span> (단가: <b id="sgiPriceVal">--</b>)</span>
+                        </p>
+                        <div class="pt-1">
+                            <div class="w-full bg-gray-200 h-1.5 rounded-full flex overflow-hidden">
+                                <div id="sgiSplitBarSj" class="bg-indigo-600 h-full transition-all duration-500" style="width: 100%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-1.5 mb-2 text-[11px]">
+                        <div class="box-sj p-2 bg-indigo-50/70 rounded-xl border border-indigo-100 transition-all">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-indigo-900 text-[10px] flex items-center gap-0.5">
+                                    <span>👨</span><span>SJ (100%)</span>
+                                </span>
+                                <span class="text-[9px] text-indigo-600 font-bold" id="sgiRatioSj">100%</span>
+                            </div>
+                            <p class="text-gray-800 font-extrabold text-xs" id="sgiQtySj">--주</p>
+                            <p class="text-[10px] text-indigo-800 font-semibold" id="sgiValSj">--원</p>
+                            <span class="inline-block mt-1 text-[8px] bg-indigo-200/60 text-indigo-800 px-1 py-0.5 rounded">우리사주</span>
+                        </div>
+                        <div class="box-jy p-2 bg-gray-50 rounded-xl border border-gray-200/60 opacity-60 transition-all">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-gray-500 text-[10px] flex items-center gap-0.5">
+                                    <span>👩</span><span>JY</span>
+                                </span>
+                                <span class="text-[9px] text-gray-400 font-bold">0%</span>
+                            </div>
+                            <p class="text-gray-400 font-bold text-xs">0주</p>
+                            <p class="text-[10px] text-gray-400">₩0원</p>
+                            <span class="inline-block mt-1 text-[8px] bg-gray-200/60 text-gray-500 px-1 py-0.5 rounded">해당 없음</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-1.5 border-t border-amber-200/50 text-[10px] flex justify-between items-center text-gray-500">
+                    <span>1월 1일 대비</span>
+                    <b id="sgiQtyDiffYtd" class="text-emerald-600 font-bold">계산 중...</b>
+                </div>
+            </div>
+
+        </div>
+    </section>
+
+    <!-- 5. ⚡ 신용대출 상환 진행률 (3억 기준) [ID: sec-debt-progress] -->
+    <section id="sec-debt-progress" class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-200 scroll-mt-16">
+        <div class="flex justify-between items-center mb-1.5 text-xs">
+            <span class="font-bold text-gray-800 flex items-center gap-1">
+                <span>⚡</span>
+                <span>신용대출 상환 진행률 (3억 기준 ➔ 2028년 무부채 목표)</span>
+            </span>
+            <span class="font-extrabold text-amber-600 whitespace-nowrap" id="debtProgressRateText">0.0% 완료</span>
+        </div>
+        <div class="w-full bg-gray-200 rounded-full h-3 mb-1.5">
+            <div id="debtProgressBar" class="bg-gradient-to-r from-amber-500 to-emerald-500 h-3 rounded-full transition-all duration-700" style="width: 0%"></div>
+        </div>
+        <div class="flex justify-between text-[11px] text-gray-500">
+            <span id="debtRepaidText" class="whitespace-nowrap">상환 완료: ₩0만 원</span>
+            <span id="debtRemainingText" class="font-semibold text-gray-700 whitespace-nowrap">남은 잔액: 계산 중...</span>
+        </div>
+    </section>
+
+    <!-- 6. 📊 실시간 시세 요약 바 [ID: sec-live-prices] -->
+    <section id="sec-live-prices" class="bg-white p-3 rounded-xl shadow-sm mb-6 text-xs grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 text-center border border-gray-100 scroll-mt-16">
+        <div class="p-1">
+            <span class="text-gray-400 block">VT 시세 (원화)</span>
+            <span class="font-bold text-gray-800" id="vtTicker">조회 중...</span>
+            <span class="block text-[10px] font-medium mt-0.5" id="vtChange">계산 중...</span>
+        </div>
+        <div class="p-1 border-l border-gray-100">
+            <span class="text-gray-400 block">절세(TIGER 토탈)</span>
+            <span class="font-bold text-teal-700" id="tigerTicker">조회 중...</span>
+            <span class="block text-[10px] font-medium mt-0.5" id="tigerChange">계산 중...</span>
+        </div>
+        <div class="p-1 border-l border-gray-100">
+            <span class="text-gray-400 block">절세(Kodex S&P)</span>
+            <span class="font-bold text-gray-800" id="sp500Ticker">조회 중...</span>
+            <span class="block text-[10px] font-medium mt-0.5" id="sp500Change">계산 중...</span>
+        </div>
+        <div class="p-1 border-l border-gray-100">
+            <span class="text-gray-400 block">SGI 주가</span>
+            <span class="font-bold text-gray-800" id="sgiTicker">조회 중...</span>
+            <span class="block text-[10px] font-medium mt-0.5" id="sgiChange">계산 중...</span>
+        </div>
+        <div class="p-1 border-l border-gray-100">
+            <span class="text-gray-400 block">원/달러 환율</span>
+            <span class="font-bold text-gray-800" id="usdTicker">조회 중...</span>
+            <span class="block text-[10px] font-medium mt-0.5" id="usdChange">계산 중...</span>
+        </div>
+    </section>
+
+    <!-- 7. ⏳ 예상 FIRE 달성 시점 & D-Day 카운트다운 [ID: sec-fire-sim] -->
+    <section id="sec-fire-sim" class="bg-indigo-900 text-white p-4 rounded-2xl shadow-md mb-6 scroll-mt-16">
+        <div class="flex justify-between items-center mb-3 border-b border-indigo-700 pb-2">
+            <div class="flex items-center gap-2">
+                <span class="text-base">⏳</span>
+                <h2 class="text-xs sm:text-sm font-bold text-white">예상 FIRE 달성 시점 & D-Day 카운트다운</h2>
+            </div>
+            <span class="text-[10px] bg-indigo-600 text-indigo-100 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                <span class="inline-block w-1.5 h-1.5 bg-green-400 rounded-full animate-ping"></span>
+                연 9,000만 순자산 개선
+            </span>
+        </div>
+
+        <div class="bg-gradient-to-r from-red-600 to-amber-600 p-3 rounded-xl mb-3 text-center shadow-inner border border-red-400/40">
+            <p class="text-[10px] text-red-100 font-semibold uppercase tracking-wider mb-0.5">🔥 FIRE Day Countdown</p>
+            <p class="text-2xl sm:text-3xl font-black text-white tracking-tight" id="fireDdayText">D-Day 계산 중...</p>
+            <p class="text-[10px] text-amber-100 mt-0.5" id="fireDdayDateSub">목표 도달 예정일 연동 중</p>
+        </div>
+
+        <div class="bg-indigo-950/80 p-3 rounded-lg border border-indigo-800/80 mb-3 text-center">
+            <p class="text-[11px] text-indigo-300">목표 달성 시점 예측 (기본 시나리오)</p>
+            <p class="text-xl font-extrabold text-yellow-300 my-0.5" id="dynamicFireBaseMain">계산 중...</p>
+            <p class="text-[10px] text-indigo-300" id="dynamicFireGapSub">계산 중...</p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-1.5 text-center text-[10px] mb-3">
+            <div class="p-2 bg-indigo-950/50 rounded border border-indigo-800/50">
+                <span class="text-gray-300 block font-semibold">보수적 (연 6.5%)</span>
+                <span class="text-xs font-bold text-blue-300 mt-0.5 block" id="dynamicFireCons">계산 중...</span>
+                <span class="text-[9px] text-gray-400 block mt-0.5" id="dynamicFireConsYears"></span>
+            </div>
+            <div class="p-2 bg-indigo-800/70 rounded border border-indigo-600">
+                <span class="text-yellow-200 block font-bold">기본 (연 8.5%)</span>
+                <span class="text-xs font-extrabold text-yellow-300 mt-0.5 block" id="dynamicFireBase">계산 중...</span>
+                <span class="text-[9px] text-yellow-100 block mt-0.5" id="dynamicFireBaseYears"></span>
+            </div>
+            <div class="p-2 bg-indigo-950/50 rounded border border-indigo-800/50">
+                <span class="text-gray-300 block font-semibold">낙관적 (연 11.5%)</span>
+                <span class="text-xs font-bold text-green-300 mt-0.5 block" id="dynamicFireOpt">계산 중...</span>
+                <span class="text-[9px] text-gray-400 block mt-0.5" id="dynamicFireOptYears"></span>
+            </div>
+        </div>
+
+        <!-- 📈 주요 시점별 예상 순자산 로드맵 -->
+        <div class="p-3 bg-indigo-950/60 rounded-xl border border-indigo-800/60">
+            <p class="text-[11px] font-bold text-yellow-300 mb-2 flex items-center justify-between">
+                <span>📈 기본 시나리오(연 8.5%) 기준 향후 예상 순자산</span>
+                <span class="text-[9px] text-indigo-300 font-normal">연 9,000만 순자산 개선 반영</span>
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 text-center text-[10px]" id="futureNetAssetMilestones">
+                <div class="p-2 bg-indigo-900/60 rounded border border-indigo-700/60">
+                    <span class="text-gray-400 block text-[9px]">현재</span>
+                    <span class="font-bold text-white block mt-0.5 whitespace-nowrap" id="msCur">-</span>
+                </div>
+                <div class="p-2 bg-indigo-900/60 rounded border border-indigo-700/60">
+                    <span class="text-gray-400 block text-[9px]">27.1월</span>
+                    <span class="font-bold text-indigo-200 block mt-0.5 whitespace-nowrap" id="ms2701">-</span>
+                </div>
+                <div class="p-2 bg-indigo-900/60 rounded border border-indigo-700/60">
+                    <span class="text-gray-400 block text-[9px]">27.7월</span>
+                    <span class="font-bold text-indigo-200 block mt-0.5 whitespace-nowrap" id="ms2707">-</span>
+                </div>
+                <div class="p-2 bg-indigo-900/60 rounded border border-indigo-700/60">
+                    <span class="text-gray-400 block text-[9px]">28.1월</span>
+                    <span class="font-bold text-indigo-200 block mt-0.5 whitespace-nowrap" id="ms2801">-</span>
+                </div>
+                <div class="p-2 bg-indigo-900/60 rounded border border-indigo-700/60">
+                    <span class="text-gray-400 block text-[9px]">28.7월</span>
+                    <span class="font-bold text-indigo-200 block mt-0.5 whitespace-nowrap" id="ms2807">-</span>
+                </div>
+                <div class="p-2 bg-indigo-900/60 rounded border border-indigo-700/60">
+                    <span class="text-gray-400 block text-[9px]">29.1월</span>
+                    <span class="font-bold text-indigo-200 block mt-0.5 whitespace-nowrap" id="ms2901">-</span>
+                </div>
+                <div class="p-2 bg-gradient-to-b from-amber-600 to-red-600 rounded border border-amber-400/50">
+                    <span class="text-amber-100 block text-[9px] font-bold" id="msFireLabel">FIRE달성</span>
+                    <span class="font-extrabold text-white block mt-0.5 whitespace-nowrap" id="msFireVal">-</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 8. 📑 자산운용계획 FIRE 목표 로드맵 [ID: sec-roadmap-table] (부동산 3.38억 원 및 구글 시트 1:1 정합 연동) -->
+    <section id="sec-roadmap-table" class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-200 scroll-mt-16">
+        <div class="flex justify-between items-center mb-2.5 border-b border-gray-100 pb-2">
+            <div>
+                <h2 class="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                    <span>📑</span>
+                    <span>자산운용계획 FIRE 목표 로드맵 (<span id="roadmapTargetYearHead">2029</span>년 🎯)</span>
+                </h2>
+                <p class="text-[11px] text-gray-500 mt-0.5" id="roadmapSheetDesc">
+                    구글 시트 '자산운용계획' <span id="roadmapTargetYearSub">2029</span>년 은퇴 목표 1:1 정합 표기
+                </p>
+            </div>
+            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full" id="sheetRoadmapStatusBadge">
+                2029년 무부채 완성 🟢
+            </span>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse" id="roadmapDataTable">
+                <thead>
+                    <tr class="border-b border-gray-200 text-gray-700 bg-gray-50/90 font-bold">
+                        <th class="py-2.5 px-3">구분</th>
+                        <th class="py-2.5 px-3 text-right text-purple-700 bg-purple-50/80 font-extrabold text-sm whitespace-nowrap" id="roadmapColHeader">
+                            <span id="roadmapThYear">2029</span>년 (<span id="roadmapThAge">43</span>세) 🎯 FIRE 목표
+                        </th>
+                        <th class="py-2.5 px-3 text-gray-500 font-normal">비고 및 비중</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-gray-700 text-xs" id="roadmapTableBody">
+                    <tr class="font-bold bg-blue-50/40">
+                        <td class="py-2.5 px-3 text-blue-900">가. 총자산</td>
+                        <td class="py-2.5 px-3 text-right text-blue-900 font-extrabold text-sm whitespace-nowrap" id="cell_tot_fire">22.51억 원</td>
+                        <td class="py-2.5 px-3 text-gray-500 text-[11px]">무부채 순자산과 100% 일치</td>
+                    </tr>
+                    <tr>
+                        <td class="py-2 px-3 text-gray-600">• 부동산(실거주 아파트)</td>
+                        <td class="py-2 px-3 text-right font-semibold text-gray-800 whitespace-nowrap" id="cell_re_fire">3.38억 원</td>
+                        <td class="py-2 px-3 text-gray-500 text-[11px]">실거주 1주택 (순투입)</td>
+                    </tr>
+                    <tr class="font-semibold text-blue-900">
+                        <td class="py-2 px-3">• 주식(직투)</td>
+                        <td class="py-2 px-3 text-right font-bold text-blue-800 whitespace-nowrap" id="cell_stock_direct_fire">9.02억 원</td>
+                        <td class="py-2 px-3 text-gray-500 text-[11px]">VT 해외직투 (2034년 증여 파이프라인)</td>
+                    </tr>
+                    <tr class="font-semibold text-teal-900">
+                        <td class="py-2 px-3">• 주식(연금)</td>
+                        <td class="py-2 px-3 text-right font-bold text-teal-800 whitespace-nowrap" id="cell_stock_pension_fire">9.02억 원</td>
+                        <td class="py-2 px-3 text-gray-500 text-[11px]">TIGER 토탈월드 (과세이연 복리)</td>
+                    </tr>
+                    <tr class="text-gray-600">
+                        <td class="py-2 px-3">• 원화 예금</td>
+                        <td class="py-2 px-3 text-right font-semibold text-gray-800 whitespace-nowrap" id="cell_cash_fire">1.08억 원</td>
+                        <td class="py-2 px-3 text-gray-500 text-[11px]">3년 치 생활비 안전 방어 버퍼</td>
+                    </tr>
+                    <tr class="font-bold bg-amber-50/50">
+                        <td class="py-2.5 px-3 text-amber-900">나. 총부채</td>
+                        <td class="py-2.5 px-3 text-right font-extrabold text-emerald-600 text-sm whitespace-nowrap" id="cell_debt_tot_fire">0원 (완납)</td>
+                        <td class="py-2.5 px-3 text-emerald-600 font-semibold text-[11px]" id="cell_debt_note">2029년 무부채 완전 달성 🎉</td>
+                    </tr>
+                    <tr class="text-gray-400 text-[11px]">
+                        <td class="py-1 px-3 pl-6">- 담보대출</td>
+                        <td class="py-1 px-3 text-right whitespace-nowrap" id="cell_debt_mort_fire">0원</td>
+                        <td class="py-1 px-3">대출 없음 (이자비용 0원)</td>
+                    </tr>
+                    <tr class="text-gray-400 text-[11px]">
+                        <td class="py-1 px-3 pl-6">- 신용대출</td>
+                        <td class="py-1 px-3 text-right whitespace-nowrap" id="cell_debt_cred_fire">0원</td>
+                        <td class="py-1 px-3">완납 (이자비용 0원)</td>
+                    </tr>
+                    <tr class="font-black bg-green-50/50 border-t-2 border-emerald-200">
+                        <td class="py-3 px-3 text-green-900 text-sm">다. 순자산(=가-나)</td>
+                        <td class="py-3 px-3 text-right text-purple-700 font-black text-base whitespace-nowrap" id="cell_net_fire">22.51억 원</td>
+                        <td class="py-3 px-3 text-purple-700 font-bold text-[11px]">FIRE 공식 은퇴 목표 달성</td>
+                    </tr>
+                    <tr class="font-bold bg-teal-50/60">
+                        <td class="py-2.5 px-3 text-teal-900">월 지출 가능금액(세후)</td>
+                        <td class="py-2.5 px-3 text-right text-teal-800 font-extrabold text-sm whitespace-nowrap" id="cell_spend_fire">301만 원</td>
+                        <td class="py-2.5 px-3 text-gray-600 text-[11px]" id="cell_spend_note">전체 주식의 2.5%(세후)</td>
+                    </tr>
+                    <tr class="font-bold bg-purple-50/60">
+                        <td class="py-2.5 px-3 text-purple-900">월평균 배당금</td>
+                        <td class="py-2.5 px-3 text-right text-purple-800 font-extrabold text-sm whitespace-nowrap" id="cell_div_fire">245.2만 원</td>
+                        <td class="py-2.5 px-3 text-purple-700 text-[11px]" id="cell_div_note">세후 배당률 1.63% 기준 (주식 합계 연동)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 9. 💵 FIRE 달성 시점별 예상 금융자산 & 세후 배당금 현황 [ID: sec-fire-dividends] -->
+    <section id="sec-fire-dividends" class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-200 scroll-mt-16">
+        <div class="flex justify-between items-center mb-2 border-b border-gray-100 pb-2">
+            <h2 class="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                <span>💵</span>
+                <span>FIRE 달성 시점별 예상 금융자산 & 세후 배당금 현황</span>
+            </h2>
+            <span class="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded">세후 배당률 1.63% 기준</span>
+        </div>
+        <p class="text-[11px] text-gray-500 mb-3 leading-relaxed">
+            • <b>세후 배당률 적용 기준</b>: 구글 시트 '보글헤드' 시트의 최신 <b>세후 배당률 1.63%</b>를 '자산운용계획' 시트의 연도별 <b>주식 합계(직투+연금)</b>에 적용하여 산출한 실제 수령 기준 배당 현금흐름입니다.
+        </p>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-[11px] border-collapse bg-slate-50/70 rounded-xl overflow-hidden border border-gray-200">
+                <thead>
+                    <tr class="bg-slate-200/80 text-gray-700 font-semibold">
+                        <th class="py-2 px-2.5">달성 시점</th>
+                        <th class="py-2 px-2 text-right whitespace-nowrap">주식(직투)</th>
+                        <th class="py-2 px-2 text-right whitespace-nowrap">주식(연금)</th>
+                        <th class="py-2 px-2 text-right font-bold text-blue-900 whitespace-nowrap">주식 합계(금융자산)</th>
+                        <th class="py-2 px-2.5 text-right font-extrabold text-purple-700 bg-purple-100/60 whitespace-nowrap">연 세후 배당금 (1.63%)</th>
+                        <th class="py-2 px-2.5 text-right font-black text-emerald-700 bg-emerald-100/60 whitespace-nowrap">월평균 배당금</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-200 text-gray-700">
+                    <tr>
+                        <td class="py-2 px-2.5 font-bold text-gray-800 whitespace-nowrap">2025년 (39세)</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">8.02억</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">8.02억</td>
+                        <td class="py-2 px-2 text-right font-bold text-blue-900 whitespace-nowrap">16.04억 원</td>
+                        <td class="py-2 px-2.5 text-right font-extrabold text-purple-700 bg-purple-50 whitespace-nowrap">연 2,614만 원</td>
+                        <td class="py-2 px-2.5 text-right font-black text-emerald-700 bg-emerald-50 whitespace-nowrap">월 217.8만 원</td>
+                    </tr>
+                    <tr class="bg-blue-50/40">
+                        <td class="py-2 px-2.5 font-bold text-blue-900 flex items-center gap-1 whitespace-nowrap">
+                            <span>📌</span><span>2026년 (현재)</span>
+                        </td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">8.26억</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">8.26억</td>
+                        <td class="py-2 px-2 text-right font-bold text-blue-900 whitespace-nowrap">16.52억 원</td>
+                        <td class="py-2 px-2.5 text-right font-extrabold text-purple-700 bg-purple-50 whitespace-nowrap">연 2,693만 원</td>
+                        <td class="py-2 px-2.5 text-right font-black text-emerald-700 bg-emerald-50 whitespace-nowrap">월 224.4만 원</td>
+                    </tr>
+                    <tr>
+                        <td class="py-2 px-2.5 font-bold text-gray-800 whitespace-nowrap">2027년 (41세)</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">8.51억</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">8.51억</td>
+                        <td class="py-2 px-2 text-right font-bold text-blue-900 whitespace-nowrap">17.01억 원</td>
+                        <td class="py-2 px-2.5 text-right font-extrabold text-purple-700 bg-purple-50 whitespace-nowrap">연 2,773만 원</td>
+                        <td class="py-2 px-2.5 text-right font-black text-emerald-700 bg-emerald-50 whitespace-nowrap">월 231.1만 원</td>
+                    </tr>
+                    <tr>
+                        <td class="py-2 px-2.5 font-bold text-gray-800 whitespace-nowrap">2028년 (42세)</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">8.76억</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">8.76억</td>
+                        <td class="py-2 px-2 text-right font-bold text-blue-900 whitespace-nowrap">17.52억 원</td>
+                        <td class="py-2 px-2.5 text-right font-extrabold text-purple-700 bg-purple-50 whitespace-nowrap">연 2,857만 원</td>
+                        <td class="py-2 px-2.5 text-right font-black text-emerald-700 bg-emerald-50 whitespace-nowrap">월 238.0만 원</td>
+                    </tr>
+                    <tr class="bg-amber-100/50 font-semibold">
+                        <td class="py-2 px-2.5 font-black text-amber-900 flex items-center gap-1 whitespace-nowrap">
+                            <span>🎯</span><span>2029년 (은퇴 FIRE)</span>
+                        </td>
+                        <td class="py-2 px-2 text-right font-bold text-blue-900 whitespace-nowrap">9.02억</td>
+                        <td class="py-2 px-2 text-right font-bold text-teal-800 whitespace-nowrap">9.02억</td>
+                        <td class="py-2 px-2 text-right font-black text-blue-950 whitespace-nowrap">18.04억 원</td>
+                        <td class="py-2 px-2.5 text-right font-black text-purple-800 bg-purple-200/50 whitespace-nowrap">연 2,942만 원</td>
+                        <td class="py-2 px-2.5 text-right font-black text-emerald-800 bg-emerald-200/50 whitespace-nowrap">월 245.2만 원</td>
+                    </tr>
+                    <tr>
+                        <td class="py-2 px-2.5 font-bold text-gray-800 whitespace-nowrap">2030년 (44세)</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">9.30억</td>
+                        <td class="py-2 px-2 text-right whitespace-nowrap">9.30억</td>
+                        <td class="py-2 px-2 text-right font-bold text-blue-900 whitespace-nowrap">18.59억 원</td>
+                        <td class="py-2 px-2.5 text-right font-extrabold text-purple-700 bg-purple-50 whitespace-nowrap">연 3,031만 원</td>
+                        <td class="py-2 px-2.5 text-right font-black text-emerald-700 bg-emerald-50 whitespace-nowrap">월 252.5만 원</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-2.5 p-2 bg-purple-50/70 rounded-lg border border-purple-100 text-[10px] text-purple-900 flex justify-between items-center">
+            <span>🛡️ <b>현금흐름 방어력</b>: 2029년 은퇴 시 월 300만 원 기본 생활비의 <b>81.7%</b>를 순수 배당(월 245.2만 원)만으로 방어하며, 부족분은 원화 예금 버퍼(1.08억)로 충당합니다.</span>
+        </div>
+    </section>
+
+    <!-- 10. 🎯 FIRE 마스터플랜 & 절세·인출 통합 지침서 [ID: sec-roadmap] -->
+    <section id="sec-roadmap" class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-200 scroll-mt-16">
+        <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+            <h2 class="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                <span>🎯</span>
+                <span>FIRE 마스터플랜 & 절세·인출 통합 지침서</span>
+            </h2>
+            <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded" id="masterplanTargetBadge">2029년 22.51억 완성</span>
+        </div>
+
+        <div class="space-y-3 text-xs">
+            <!-- 1단계: 축적 및 대출 상환 (2026~2028년) -->
+            <div class="p-3 bg-blue-50/70 rounded-xl border border-blue-100 space-y-1.5">
+                <div class="flex justify-between items-center">
+                    <span class="font-extrabold text-blue-900 text-xs flex items-center gap-1">
+                        <span>1️⃣</span><span>2026~2028년: 축적 가속화 & 부채 0원(완납) 달성</span>
+                    </span>
+                    <span class="text-[9px] bg-blue-200 text-blue-800 px-1.5 py-0.5 rounded font-bold">진행 중</span>
+                </div>
+                <p class="text-gray-700 leading-relaxed">• <b>SJ (본인)</b>: 월 300만 원 VT 자동매수 + 잉여 현금 전액 신용대출 집중 상환 ➔ <b>2028년 부채 0원 완납 달성</b>.</p>
+                <p class="text-gray-700 leading-relaxed">• <b>JY (배우자)</b>: VT를 매년 3,800만 원 매도하여 부부 연금저축/ISA의 <b>TIGER 토탈월드스탁액티브</b>로 이전 매수 (일반계좌 배당소득 1,000만 원 이하 통제로 <b>건보료 0원 철통 방어</b>).</p>
+                <p class="text-gray-700 leading-relaxed">• <b>3년 치 예금 버퍼 구축</b>: 신용대출 상환 완료 후 수익률 순서 리스크 방어용 <b>원화 예금 1.08억 원</b> 확보.</p>
+            </div>
+
+            <!-- 2단계: FIRE D-Day 공식 은퇴 & 주거 결정 (2029년) -->
+            <div class="p-3 bg-amber-50/70 rounded-xl border border-amber-200 space-y-1.5">
+                <div class="flex justify-between items-center">
+                    <span class="font-extrabold text-amber-900 text-xs flex items-center gap-1" id="fireDdayPlanTitle">
+                        <span>2️⃣</span><span>2029년 (FIRE D-Day): 시장 점검 ➔ 주거 결정 & 공식 은퇴</span>
+                    </span>
+                    <span class="text-[9px] bg-amber-200 text-amber-900 px-1.5 py-0.5 rounded font-bold">FIRE 완성</span>
+                </div>
+                <p class="text-gray-700 leading-relaxed">• <b>주거 전략의 유연한 최종 선택</b>: 은퇴 직전 부동산 시장을 면밀히 분석하여 <b>'자가 매입'</b>과 <b>'전·월세 시작 + 분양/급매 관망'</b> 중 최적안을 선택.</p>
+                <p class="text-gray-700 leading-relaxed">• <b>자가 매입 시</b>: 기존 전세보증금 + 자산 일부 재배치로 실거주 아파트(3.38억) 매수 등기 완료 (대출 0원, 완전 무부채로 안전 마진 극대화).</p>
+                <p class="text-gray-700 leading-relaxed">• <b>금융자산 온전 보존</b>: 주식 매도 없이 배당금(월 세후 245.2만 원) 및 안전 버퍼 체제 가동과 함께 공식 은퇴 선언!</p>
+            </div>
+
+            <!-- 3단계: FIRE 이후 영구 보존 & 2034년 배우자 6억 증여 로드맵 -->
+            <div class="p-3 bg-slate-900 text-slate-100 rounded-xl border border-slate-700 space-y-1.5">
+                <div class="flex justify-between items-center">
+                    <span class="font-extrabold text-teal-300 text-xs flex items-center gap-1">
+                        <span>3️⃣</span><span>FIRE 이후: 영구 자산 보존 & 2034년 6억 증여 로드맵</span>
+                    </span>
+                    <span class="text-[9px] bg-teal-800 text-teal-200 px-1.5 py-0.5 rounded font-bold">양도세 0원화</span>
+                </div>
+                <p class="leading-relaxed text-slate-300">• <b>본인(SJ) VT 100% 보존</b>: 은퇴 후 본인 명의 VT는 한 주도 매도하지 않고 장기 보유 지속.</p>
+                <p class="leading-relaxed text-slate-300">• <b>2034년 말 배우자 6억 증여 리셋</b>: 10년 주기 배우자 증여공제(6억 원)를 활용해 배우자에게 증여 ➔ 취득가액을 시가로 리셋하여 <b>양도소득세(22%) 완전 0원화</b>.</p>
+                <p class="leading-relaxed text-slate-300">• <b>1년 의무보유 원칙 준수</b>: 소득세법 제101조에 따라 2035년 말까지 1년 이상 보유 후, 2036년부터 비과세로 순차 인출하여 세무 리스크 완전 차단.</p>
+                <p class="leading-relaxed text-slate-300">• <b>국민연금 임의가입 유지</b>: 만 60세까지 최저보험료 임의가입을 이어가 물가상승률(CPI) 100% 연동 평생 종신 기초연금 확보.</p>
+            </div>
+
+            <!-- 4단계: 6단계 안전 인출 시퀀스 요약 표 -->
+            <div>
+                <p class="font-bold text-gray-800 text-[11px] mb-1.5 flex items-center gap-1">
+                    <span>🏛️</span><span>위기 차단: 은퇴 자금 6단계 인출 시퀀스</span>
+                </p>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-[11px] border-collapse bg-gray-50 rounded-lg overflow-hidden border border-gray-200">
+                        <thead>
+                            <tr class="bg-gray-200/80 text-gray-700">
+                                <th class="py-1.5 px-2">순서</th>
+                                <th class="py-1.5 px-2">인출 출처</th>
+                                <th class="py-1.5 px-2">세금/비용</th>
+                                <th class="py-1.5 px-2 text-center">건보료</th>
+                                <th class="py-1.5 px-2">핵심 운용 전략</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200 text-gray-700">
+                            <tr>
+                                <td class="py-1.5 px-2 font-bold text-purple-700">0순위</td>
+                                <td class="py-1.5 px-2 font-semibold">VT 분기 배당금</td>
+                                <td class="py-1.5 px-2">배당세 15.4%</td>
+                                <td class="py-1.5 px-2 text-center text-amber-600 font-bold">연 1천만 이하 통제</td>
+                                <td class="py-1.5 px-2">자동 입금분으로 월 생활비 1차 충당 (원금 100% 보존)</td>
+                            </tr>
+                            <tr class="bg-blue-50/70">
+                                <td class="py-1.5 px-2 font-bold text-blue-800">1순위</td>
+                                <td class="py-1.5 px-2 font-bold text-blue-900">3년 치 예금 버퍼 원금</td>
+                                <td class="py-1.5 px-2 text-emerald-600 font-bold">0원 (비과세)</td>
+                                <td class="py-1.5 px-2 text-center text-emerald-600 font-bold">0원 (제외)</td>
+                                <td class="py-1.5 px-2 font-medium text-blue-900">주식 하락장 저가 매도를 철저히 차단하는 최우선 완충 방패</td>
+                            </tr>
+                            <tr class="bg-amber-50/70">
+                                <td class="py-1.5 px-2 font-bold text-amber-800">2순위</td>
+                                <td class="py-1.5 px-2 font-bold text-amber-900">연금저축 담보대출(3%)</td>
+                                <td class="py-1.5 px-2 font-bold text-amber-800">연 3%대 이자</td>
+                                <td class="py-1.5 px-2 text-center text-emerald-600 font-bold">0원 (제외)</td>
+                                <td class="py-1.5 px-2 font-bold text-amber-900">ETF 매도 없이 복리 엔진을 유지하며 유동성 확보 후 배당금으로 이자 상환</td>
+                            </tr>
+                            <tr>
+                                <td class="py-1.5 px-2 font-bold text-emerald-700">3순위</td>
+                                <td class="py-1.5 px-2 font-semibold">연금저축 비과세 원금</td>
+                                <td class="py-1.5 px-2 text-emerald-600 font-bold">0원 (비과세)</td>
+                                <td class="py-1.5 px-2 text-center text-emerald-600 font-bold">0원 (제외)</td>
+                                <td class="py-1.5 px-2">세액공제 받지 않은 납입 원금부터 세금·건보료 마찰 없이 인출</td>
+                            </tr>
+                            <tr>
+                                <td class="py-1.5 px-2 font-bold text-indigo-700">4순위</td>
+                                <td class="py-1.5 px-2 font-semibold">VT 주식 매도</td>
+                                <td class="py-1.5 px-2">양도세 22% ➔ 0원</td>
+                                <td class="py-1.5 px-2 text-center text-emerald-600 font-bold">0원 (제외)</td>
+                                <td class="py-1.5 px-2">2034년 말 6억 증여 리셋 후 2036년부터 세금 0원으로 인출</td>
+                            </tr>
+                            <tr>
+                                <td class="py-1.5 px-2 font-bold text-gray-700">5순위</td>
+                                <td class="py-1.5 px-2 font-semibold">(만 55세~) 연금 수령</td>
+                                <td class="py-1.5 px-2">연금세 3.3~5.5%</td>
+                                <td class="py-1.5 px-2 text-center text-emerald-600 font-bold">0원 (제외)</td>
+                                <td class="py-1.5 px-2">부부 합산 연 3,000만 원 이하 저율 분리과세 적용으로 안정적 수령</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 11. 순자산 성장 히스토리 차트 -->
+    <section class="bg-white p-4 rounded-xl shadow-sm mb-6">
+        <h2 class="text-xs sm:text-sm font-bold text-gray-700 mb-3">📈 순자산 성장 히스토리 (단위: 억 원)</h2>
+        <canvas id="historyChart"></canvas>
+    </section>
+
+    <!-- 12. 월별 예상 배당 소득 스케줄 (현재 vs 파이어 시점 5:5 포트폴리오) -->
+    <section class="bg-white p-4 rounded-xl shadow-sm mb-6">
+        <div class="mb-6">
+            <h2 class="text-xs sm:text-sm font-bold text-gray-800 mb-1">📅 현재 월별 예상 배당 소득 스케줄 (연 세후 3,125만 원)</h2>
+            <p class="text-[11px] text-gray-500 mb-3">VT 분기배당(3·6·9·12월) + 절세계좌 분기배당(2·5·8·11월) + SGI 서울보증 비과세(4월 연배당)</p>
+            <div class="w-full">
+                <canvas id="dividendMonthlyChart" class="max-h-52"></canvas>
+            </div>
+        </div>
+
+        <div class="pt-4 border-t border-gray-100">
+            <div class="flex justify-between items-center mb-1">
+                <h2 class="text-xs sm:text-sm font-bold text-indigo-900 flex items-center gap-1">
+                    <span>🔥</span>
+                    <span>파이어(2029년) 시점 예상 배당 소득 스케줄 (연 세후 2,942만 원)</span>
+                </h2>
+                <span class="text-[10px] bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded font-bold">세후 1.63% (VT 50% + TIGER 50%)</span>
+            </div>
+            <p class="text-[11px] text-gray-500 mb-3">주식 자산 18.04억 원 기준 (세후 1.63%): VT 분기배당(3·6·9·12월 각 368만) + TIGER 토탈월드 분기배당(2·5·8·11월 각 368만)</p>
+            <div class="w-full">
+                <canvas id="fireDividendMonthlyChart" class="max-h-52"></canvas>
+            </div>
+        </div>
+    </section>
+
+    <!-- 13. 📰 네이버 경제 뉴스 허브 & 주요 일간지 사설 [ID: sec-news] -->
+    <section id="sec-news" class="bg-slate-900 text-slate-100 p-4 rounded-2xl shadow-md mb-6 border border-slate-800 scroll-mt-16">
+        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
+            <div class="flex items-center gap-2">
+                <span class="text-base">📰</span>
+                <h2 class="text-xs sm:text-sm font-bold text-white">네이버 경제 뉴스 허브 & 주요 일간지 사설</h2>
+            </div>
+            <a href="https://news.naver.com/section/101" target="_blank" rel="noopener noreferrer" class="text-[10px] bg-green-600 text-green-100 font-semibold px-2 py-0.5 rounded-full hover:bg-green-500 transition-colors">
+                네이버 경제 홈 ↗
+            </a>
+        </div>
+
+        <div class="grid grid-cols-3 sm:grid-cols-6 gap-1.5 mb-3.5">
+            <a href="https://news.naver.com/section/101" target="_blank" rel="noopener noreferrer" class="p-2 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-center text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5">
+                <span>🌐</span><span>경제 홈 ↗</span>
+            </a>
+            <a href="https://finance.naver.com/" target="_blank" rel="noopener noreferrer" class="p-2 bg-slate-800 hover:bg-slate-700 text-teal-300 border border-slate-700 rounded-lg text-center text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5">
+                <span>📈</span><span>증권·금융 ↗</span>
+            </a>
+            <a href="https://land.naver.com/news/" target="_blank" rel="noopener noreferrer" class="p-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-center text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5">
+                <span>🏢</span><span>부동산 뉴스 ↗</span>
+            </a>
+            <a href="https://news.naver.com/section/104" target="_blank" rel="noopener noreferrer" class="p-2 bg-slate-800 hover:bg-slate-700 text-blue-300 border border-slate-700 rounded-lg text-center text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5">
+                <span>🌏</span><span>글로벌 경제 ↗</span>
+            </a>
+            <a href="https://news.naver.com/main/ranking/popularDay.naver?mid=etc&sid1=101" target="_blank" rel="noopener noreferrer" class="p-2 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-slate-700 rounded-lg text-center text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5">
+                <span>🏆</span><span>헤드라인 랭킹 ↗</span>
+            </a>
+            <a href="https://finance.naver.com/marketindex/" target="_blank" rel="noopener noreferrer" class="p-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 rounded-lg text-center text-[10px] font-bold transition flex flex-col items-center justify-center gap-0.5">
+                <span>💱</span><span>환율·금리 ↗</span>
+            </a>
+        </div>
+
+        <div class="space-y-3 text-xs leading-relaxed text-slate-300">
+            <div>
+                <p class="font-semibold text-indigo-300 mb-1.5 flex items-center justify-between">
+                    <span>📰 주요 일간지 신문 사설 및 오피니언</span>
+                    <span class="text-[10px] text-slate-400">방문 시 매번 셔플</span>
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 text-[11px]" id="editorialsContainer"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 14. 💸 전월 가계부 결산 리포트 카드 [ID: sec-account-book] -->
+    <section id="sec-account-book" class="bg-white p-4 rounded-xl shadow-sm mb-6 border border-gray-200 scroll-mt-16">
+        <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-2">
+            <h2 class="text-xs sm:text-sm font-bold text-gray-800 flex items-center gap-1.5">
+                <span>💸</span>
+                <span>전월 가계부 결산 리포트</span>
+            </h2>
+            <span class="text-[10px] bg-green-100 text-green-800 font-bold px-2 py-0.5 rounded" id="abMonthLabel">가계부 연동 중...</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs mb-2">
+            <div class="p-3 bg-indigo-50/70 rounded-xl border border-indigo-100">
+                <span class="text-gray-500 block text-[10px] mb-0.5">전월 확정 저축률</span>
+                <span class="font-extrabold text-indigo-700 text-base block" id="abSavingsRate">계산 중...</span>
+                <span class="text-[10px] text-indigo-600 block mt-0.5 font-medium" id="abSavingsAmount"></span>
+            </div>
+
+            <div class="p-3 bg-purple-50/70 rounded-xl border border-purple-100">
+                <span class="text-gray-500 block text-[10px] mb-0.5">지출 대비 배당 커버율</span>
+                <span class="font-extrabold text-purple-700 text-base block" id="abDivCoverage">계산 중...</span>
+                <span class="text-[10px] text-purple-600 block mt-0.5 font-medium">가계부 실측 연동</span>
+            </div>
+
+            <div class="col-span-2 p-2.5 bg-gray-50 rounded-lg border border-gray-200 text-center">
+                <span class="text-gray-700 text-[11px] font-medium block" id="abIncomeSpending">수입/지출 불러오는 중...</span>
+            </div>
+        </div>
+
+        <div id="abYtdSummary"></div>
+    </section>
+
+    <!-- 15. 💱 원/달러 환율 변동성 감응도 분석 카드 -->
+    <section class="bg-amber-950 text-amber-50 p-4 rounded-xl shadow-md mb-6 border border-amber-800">
+        <div class="flex justify-between items-center mb-3 border-b border-amber-800/80 pb-2">
+            <h2 class="text-xs sm:text-sm font-bold flex items-center gap-1.5 text-amber-200">
+                <span>💱</span>
+                <span>원/달러 환율 변동성 감응도 분석 (달러 자산 자연 헷지)</span>
+            </h2>
+            <span class="text-[10px] bg-amber-800 text-amber-100 px-2 py-0.5 rounded font-bold">자동 방어 리포트</span>
+        </div>
+        <p class="text-[11px] text-amber-100/90 leading-relaxed mb-3">
+            글로벌 증시 하락 시 환율 상승(1,500원대)으로 원화 평가 자산 감소폭을 약 -9.5%로 완충 방어합니다.
+        </p>
+        <div class="overflow-x-auto mb-2">
+            <table class="w-full text-left text-[11px] border-collapse">
+                <thead>
+                    <tr class="border-b border-amber-800/80 text-amber-300 pb-1">
+                        <th class="py-1 font-medium">환율 시나리오</th>
+                        <th class="py-1 font-medium text-right whitespace-nowrap">예상 순자산</th>
+                        <th class="py-1 font-medium text-right whitespace-nowrap">현재 대비 증감</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-amber-900/60 text-amber-100/90" id="usdSensitivityTableBody">
+                    <tr><td colspan="3" class="py-2 text-center text-amber-300">계산 중...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <!-- 스크립트 엔진 -->
+    <script>
+        Chart.register(ChartDataLabels);
+
+        const SHEET_ID = '1obQfoNMuve45jr1wJZehkhAxPAs3-pn6UY2eDmlYMBM';
+
+        // 연도별 목표 순자산 맵 (시트 18행 1:1 일치)
+        const FIRE_GOALS = {
+            2025: 2000000000,
+            2026: 2060000000,
+            2027: 2121800000,
+            2028: 2185454000,
+            2029: 2251017620,
+            2030: 2318548149
+        };
+
+        // 연도별 예상 월평균 배당금 맵 (세후 1.63% 기준)
+        const DIVIDEND_BY_YEAR = {
+            2025: "217.8만 원",
+            2026: "224.4만 원",
+            2027: "231.1만 원",
+            2028: "238.0만 원",
+            2029: "245.2만 원",
+            2030: "252.5만 원"
+        };
+
+        let QUANTITY = { VT: 0, SP500: 0, TIGER: 0, SGI: 0 };
+
+        // SJ & JY 개별 주식 수량 및 지분 상태 객체
+        let stockMemberData = {
+            VT: { sjQty: 0, jyQty: 0, sjVal: 0, jyVal: 0, sjRatio: 64.5, jyRatio: 35.5 },
+            TIGER: { sjQty: 0, jyQty: 0, sjVal: 0, jyVal: 0, sjRatio: 50.0, jyRatio: 50.0 },
+            SP500: { sjQty: 0, jyQty: 0, sjVal: 0, jyVal: 0, sjRatio: 50.0, jyRatio: 50.0 },
+            SGI: { sjQty: 0, jyQty: 0, sjVal: 0, jyVal: 0, sjRatio: 100.0, jyRatio: 0.0 }
+        };
+
+        // 구글 시트 '자산운용계획' 1:1 정합 연도별 로드맵 기본 데이터 (부동산 3.38억 원 등 정합 수치)
+        let roadmapDataByYear = {
+            2025: { tot: 2000000000, re: 300000000, stockDirect: 801886793, stockPension: 801886792, cash: 96226415, debtTot: 0, debtMort: 0, debtCred: 0, net: 2000000000, spend: 2672956 },
+            2026: { tot: 2060000000, re: 309000000, stockDirect: 825943397, stockPension: 825943396, cash: 99113207, debtTot: 0, debtMort: 0, debtCred: 0, net: 2060000000, spend: 2753145 },
+            2027: { tot: 2121800000, re: 318270000, stockDirect: 850721699, stockPension: 850721698, cash: 102086604, debtTot: 0, debtMort: 0, debtCred: 0, net: 2121800000, spend: 2835739 },
+            2028: { tot: 2185454000, re: 327818100, stockDirect: 876243350, stockPension: 876243349, cash: 105149202, debtTot: 0, debtMort: 0, debtCred: 0, net: 2185454000, spend: 2920811 },
+            2029: { tot: 2251017620, re: 337652643, stockDirect: 902530650, stockPension: 902530649, cash: 108303678, debtTot: 0, debtMort: 0, debtCred: 0, net: 2251017620, spend: 3008435 },
+            2030: { tot: 2318548149, re: 347782222, stockDirect: 929606570, stockPension: 929606569, cash: 111552788, debtTot: 0, debtMort: 0, debtCred: 0, net: 2318548149, spend: 3098688 }
+        };
+
+        // 구글 시트 A/B열에서 불러오는 현재 실시간 자산 기준값
+        let sheetAssets = {
+            totalAssets: 1857611807,
+            netAssets: 1558611807,
+            totalDebt: 295000000,
+            realEstate: 264000000,
+            stockDirect: 1063236877,
+            stockPension: 505374930,
+            cash: 25000000,
+            fireTarget: 2251017620,
+            vtSjAmount: 0,
+            vtJyAmount: 0
+        };
+
+        let liveData = {
+            usdKrw: { price: 1427.42, prev: 1442.96, change: 0, percent: 0 },
+            vt: { price: 227093, prev: 225150, change: 0, percent: 0 },
+            tiger: { price: 10500, prev: 10450, change: 0, percent: 0 },
+            sp500: { price: 24625, prev: 24790, change: 0, percent: 0 },
+            sgi: { price: 44400, prev: 43750, change: 0, percent: 0 }
+        };
+
+        let historyChart = null;
+        let dividendMonthlyChart = null;
+        let fireDividendMonthlyChart = null;
+
+        const bogleQuotesLibrary = [
+            "자산은 주머니에 돈을 넣어주고 부채는 돈을 빼간다.",
+            "내가 지금 1만 원을 쓰는 것은, 1억 원을 빌려 생활하는 상황에서 그 하루 이자를 추가로 내는 것과 같다고 생각하면 지출이 가볍게 느껴지지 않는다.",
+            "세전 연봉 5,000만 원을 받는 사람은 4% 수익률 기준으로 약 12억 5,000만 원 규모의 안정적 자산을 보유한 셈이다.",
+            "돈이 생기면 바로 자산화하는 것도 효과적인 방법이다. 현금으로 두면 소비 충동이 커지지만, 투자 자산으로 옮기면 소비 욕구가 통제된다.",
+            "중요한 건 부채를 소비 도구로 사용하지 않는 것이다.",
+            "지식보다 구조, 감정보다는 시스템, 시장 예측보다는 꾸준한 반복을 갖추면 누구나 경제적 자유에 도달할 수 있다.",
+            "월급 대부분을 투자자산에 넣고 주변의 의심과 조롱을 감내하라. 한 번 구축된 자산 시스템은 영원히 나를 위해 작동한다.",
+            "부동산에 투자할 때 핵심은 실거주 자산의 비중을 최소화하는 것이다.",
+            "정신적 체력을 쌓기 위해 일상적인 명상이나 달리기 같은 운동을 꾸준히 하는 것은 실전 투자에서 큰 차이를 만든다.",
+            "'뛰읽쓰 꾸자사모' — 뛰고, 읽고, 쓰고, 꾸준히 자산을 사서 모아가는 것은 평생에 걸쳐 해내야 하는 기본값이다.",
+            "투자는 진입 장벽이 가장 높은 것부터 해야 장기 생존 확률이 높다. 부동산은 가장 확실한 생존 기반이다.",
+            "장기 인플레이션 환경에서 가장 좋은 전략은 신속하게 레버리지를 일으켜 좋은 입지의 실물 자산을 매입하고 끝까지 버티는 것이다.",
+            "원금을 건드리는 소비가 자산을 깎아내는 행위라면, 배당금으로 소비하면 자산은 보존되고 지속 가능한 생활이 가능하다.",
+            "우리가 좋아하는 보유 기간은 영원이다.",
+            "상승장에서도 매도하지 않고 꾸준히 자산을 축적하며 복리의 마법을 실현하라.",
+            "\"건초더미 속에서 바늘을 찾으려 하지 마라. 건초더미(전체 시장)를 통째로 사라.\" — 존 보글",
+            "\"시장을 이기려 하지 마라. 시장 자체가 되어라.\" — 존 보글",
+            "\"시간은 투자의 친구이지만, 수수료와 비용은 투자의 적이다.\" — 존 보글",
+            "\"단순함이 복잡함을 이긴다. 포트폴리오가 단순할수록 성공 확률은 높아진다.\" — 존 보글",
+            "\"아무것도 하지 말고 가만히 있어라(Don't just do something, stand there!).\" — 존 보글",
+            "\"종목 공부 1도 안 하고 패시브 투자를 100% 실천한 사람의 수익률이 상위 5%에 들어간다.\"",
+            "\"그냥 계속 사 모아라(Just Keep Buying). 최적의 타이밍을 기다리지 마라.\" — 닉 매기울리",
+            "\"주식 시장은 적극적인 자에게서 참을성 있는 자에게로 돈이 넘어가도록 설계되어 있다.\" — 워런 버핏",
+            "\"절세와 건강보험료 관리는 연 2%의 추가 수익률을 확정적으로 얻는 것과 같다.\"",
+            "\"3년 치 생활비 버퍼 예금은 하락장에 주식을 헐값에 파는 비극을 완벽하게 차단한다.\"",
+            "\"오늘 모은 1주의 VT는 20년 뒤 나에게 온전한 며칠의 자유를 선물한다.\"",
+            "\"우리가 가장 사랑하는 보유 기간은 영원이며, 우리의 최종 목적지는 완전한 삶의 자유다.\""
+        ];
+
+        function setTenRandomBogleQuotes() {
+            const shuffled = [...bogleQuotesLibrary].sort(() => 0.5 - Math.random());
+            const selectedTen = shuffled.slice(0, 10);
+            document.getElementById('bogleQuotesList').innerHTML = selectedTen.map((quote, idx) => `
+                <li class="p-2.5 bg-blue-950/70 rounded-lg border border-blue-800/60 flex gap-2 items-start">
+                    <span class="text-blue-300 font-bold not-italic text-xs shrink-0">${idx + 1}.</span>
+                    <span class="text-xs leading-relaxed">${quote}</span>
+                </li>
+            `).join('');
+        }
+
+        function parseCSVLine(text) {
+            let result = [];
+            let cur = '';
+            let inQuotes = false;
+            for (let i = 0; i < text.length; i++) {
+                let c = text[i];
+                if (c === '"') { inQuotes = !inQuotes; }
+                else if (c === ',' && !inQuotes) { result.push(cur.trim()); cur = ''; }
+                else { cur += c; }
+            }
+            result.push(cur.trim());
+            return result;
+        }
+
+        function getCleanNum(val) {
+            if (!val) return 0;
+            let num = parseFloat(String(val).replace(/[^0-9.-]/g, ''));
+            return isNaN(num) ? 0 : num;
+        }
+
+        function normalizeDateStr(raw) {
+            if (!raw) return '';
+            let cleaned = raw.replace(/["'\s]/g, '').trim();
+            let parts = cleaned.split(/[.\-\/]/);
+            if (parts.length === 3) {
+                let yy = parts[0].length === 4 ? parts[0].substring(2) : parts[0].padStart(2, '0');
+                let mm = parts[1].padStart(2, '0');
+                let dd = parts[2].padStart(2, '0');
+                return `${yy}.${mm}.${dd}`;
+            }
+            return '';
+        }
+
+        function formatEokStr(val) {
+            if (val === undefined || val === null) return null;
+            const eok = val > 100000 ? (val / 100000000) : val;
+            return `${eok.toFixed(2)}억 원`;
+        }
+
+        // 📑 구글 시트 '자산운용계획' 시트 파서 (SJ/JY 분할 및 부동산 3.38억 정합)
+        async function fetchGoogleSheetAssets() {
+            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('자산운용계획')}`;
+            try {
+                const res = await fetch(url);
+                const csvText = await res.text();
+                const lines = csvText.split('\n');
+                
+                let foundRoadmapData = false;
+                let yearColMap = {};
+
+                for (let r = 0; r < Math.min(lines.length, 10); r++) {
+                    const row = parseCSVLine(lines[r]);
+                    for (let c = 0; c < row.length; c++) {
+                        const cellTxt = String(row[c] || '').trim();
+                        const match = cellTxt.match(/20\d\d/);
+                        if (match) {
+                            const y = parseInt(match[0]);
+                            if (!yearColMap[y]) yearColMap[y] = c;
+                        }
+                    }
+                }
+
+                let col2029Idx = yearColMap[2029] || 10;
+
+                lines.forEach((line) => {
+                    const row = parseCSVLine(line);
+                    if (row.length < 2) return;
+
+                    const labelColA = String(row[0] || '').replace(/["']/g, '').trim();
+                    const valColB = getCleanNum(row[1]);
+
+                    if (valColB > 0) {
+                        if (labelColA.includes('총자산') && !labelColA.includes('부채')) sheetAssets.totalAssets = valColB;
+                        else if (labelColA.includes('부동산')) sheetAssets.realEstate = valColB;
+                        else if (labelColA.includes('주식') && labelColA.includes('직투')) sheetAssets.stockDirect = valColB;
+                        else if (labelColA.includes('주식') && labelColA.includes('연금')) sheetAssets.stockPension = valColB;
+                        else if (labelColA.includes('원화 예금') || labelColA.includes('원화예금')) sheetAssets.cash = valColB;
+                        else if (labelColA.includes('총부채')) sheetAssets.totalDebt = valColB;
+                        else if (labelColA.includes('순자산')) sheetAssets.netAssets = valColB;
+                        else if (labelColA.includes('VT') && labelColA.includes('SJ')) sheetAssets.vtSjAmount = valColB;
+                        else if (labelColA.includes('VT') && labelColA.includes('JY')) sheetAssets.vtJyAmount = valColB;
+                    }
+
+                    let roadmapType = "";
+                    let roadmapLabelIdx = -1;
+
+                    for (let c = 2; c < row.length; c++) {
+                        let clean = String(row[c] || '').replace(/[•\s·"']/g, '').trim();
+                        if (!clean) continue;
+
+                        if (clean.includes('총자산') && !clean.includes('부채')) { roadmapType = 'tot'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('실거주') || (clean.includes('부동산') && clean.includes('아파트'))) { roadmapType = 're'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('주식') && clean.includes('직투')) { roadmapType = 'stockDirect'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('주식') && clean.includes('연금')) { roadmapType = 'stockPension'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('원화예금')) { roadmapType = 'cash'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('총부채')) { roadmapType = 'debtTot'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('담보대출')) { roadmapType = 'debtMort'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('신용대출')) { roadmapType = 'debtCred'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('순자산')) { roadmapType = 'net'; roadmapLabelIdx = c; break; }
+                        else if (clean.includes('월지출')) { roadmapType = 'spend'; roadmapLabelIdx = c; break; }
+                    }
+
+                    if (roadmapType && roadmapLabelIdx !== -1) {
+                        Object.keys(yearColMap).forEach(y => {
+                            const targetCol = yearColMap[y];
+                            const num = getCleanNum(row[targetCol]);
+                            if (!roadmapDataByYear[y]) roadmapDataByYear[y] = {};
+                            if (num > 0 || roadmapType.startsWith('debt')) {
+                                roadmapDataByYear[y][roadmapType] = num;
+                            }
+                        });
+
+                        const targetCol = (col2029Idx > roadmapLabelIdx) ? col2029Idx : (roadmapLabelIdx + 5);
+                        const num = getCleanNum(row[targetCol]);
+
+                        if (roadmapType === 'tot' && num > 0) {
+                            const cell = document.getElementById('cell_tot_fire');
+                            if (cell) { cell.innerText = formatEokStr(num); foundRoadmapData = true; }
+                        } else if (roadmapType === 're' && num > 0) {
+                            const cell = document.getElementById('cell_re_fire');
+                            if (cell) { cell.innerText = formatEokStr(num); foundRoadmapData = true; }
+                        } else if (roadmapType === 'stockDirect' && num > 0) {
+                            const cell = document.getElementById('cell_stock_direct_fire');
+                            if (cell) { cell.innerText = formatEokStr(num); foundRoadmapData = true; }
+                        } else if (roadmapType === 'stockPension' && num > 0) {
+                            const cell = document.getElementById('cell_stock_pension_fire');
+                            if (cell) { cell.innerText = formatEokStr(num); foundRoadmapData = true; }
+                        } else if (roadmapType === 'cash' && num > 0) {
+                            const cell = document.getElementById('cell_cash_fire');
+                            if (cell) cell.innerText = formatEokStr(num);
+                        } else if (roadmapType === 'debtTot') {
+                            const cell = document.getElementById('cell_debt_tot_fire');
+                            if (cell) cell.innerText = num === 0 ? "0원 (완납)" : formatEokStr(num);
+                        } else if (roadmapType === 'debtMort') {
+                            const cell = document.getElementById('cell_debt_mort_fire');
+                            if (cell) cell.innerText = num === 0 ? "0원" : formatEokStr(num);
+                        } else if (roadmapType === 'debtCred') {
+                            const cell = document.getElementById('cell_debt_cred_fire');
+                            if (cell) cell.innerText = num === 0 ? "0원" : formatEokStr(num);
+                        } else if (roadmapType === 'net' && num > 0) {
+                            const cell = document.getElementById('cell_net_fire');
+                            if (cell) cell.innerText = formatEokStr(num);
+                        } else if (roadmapType === 'spend' && num > 0) {
+                            const cell = document.getElementById('cell_spend_fire');
+                            if (cell) {
+                                const man = num > 100000 ? Math.round(num / 10000) : Math.round(num * 10000);
+                                cell.innerText = `${man.toLocaleString()}만 원`;
+                            }
+                        }
+                    }
+                });
+
+                const badge = document.getElementById('sheetRoadmapStatusBadge');
+                if (badge) {
+                    badge.innerText = foundRoadmapData ? "2029년 무부채 완성 🟢" : "2029년 무부채 목표";
+                }
+            } catch (e) {
+                console.log("구글 시트 자산 조회 실패, 기본 로드맵 값 사용");
+            }
+        }
+
+        // 📈 보글헤드 시트 및 주식 트래커 수량/금액/SJ·JY 분할 계산
+        async function fetchGoogleSheetPricesAndChange() {
+            try {
+                const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('보글헤드')}`;
+                const res = await fetch(url);
+                const csvText = await res.text();
+                const lines = csvText.split('\n').map(l => parseCSVLine(l));
+
+                const findRow = (keywords, defaultIdx) => {
+                    for (let i = 0; i < Math.min(lines.length, 12); i++) {
+                        let text = (lines[i] || []).join(' ');
+                        if (keywords.some(k => text.includes(k))) return lines[i];
+                    }
+                    return lines[defaultIdx] || [];
+                };
+
+                const rVt = findRow(['VT'], 0);
+                const rTiger = findRow(['토탈월드', 'TIGER', '타이거'], 1);
+                const rSp500 = findRow(['Kodex', 'S&P500', 'S&P 500'], 2);
+                const rSgi = findRow(['SGI'], 3);
+                const rUsd = findRow(['환율'], 5);
+
+                const qVt = getCleanNum(rVt[4]);
+                const qTiger = getCleanNum(rTiger[4]);
+                const qSp500 = getCleanNum(rSp500[4]);
+                const qSgi = getCleanNum(rSgi[4]);
+
+                if (qVt > 0) QUANTITY.VT = qVt;
+                if (qTiger >= 0 && rTiger.length) QUANTITY.TIGER = qTiger;
+                if (qSp500 > 0) QUANTITY.SP500 = qSp500;
+                if (qSgi > 0) QUANTITY.SGI = qSgi;
+
+                // 보글헤드 시트 내 SJ/JY 개별 행 탐색 (존재 시 우선 적용)
+                for (let i = 0; i < Math.min(lines.length, 18); i++) {
+                    const rowText = (lines[i] || []).join(' ').toUpperCase();
+                    const qty = getCleanNum((lines[i] || [])[4]);
+                    if (qty > 0) {
+                        if (rowText.includes('VT') && (rowText.includes('SJ') || rowText.includes('성제'))) stockMemberData.VT.sjQty = qty;
+                        else if (rowText.includes('VT') && (rowText.includes('JY') || rowText.includes('진영'))) stockMemberData.VT.jyQty = qty;
+                        else if ((rowText.includes('TIGER') || rowText.includes('토탈')) && (rowText.includes('SJ') || rowText.includes('성제'))) stockMemberData.TIGER.sjQty = qty;
+                        else if ((rowText.includes('TIGER') || rowText.includes('토탈')) && (rowText.includes('JY') || rowText.includes('진영'))) stockMemberData.TIGER.jyQty = qty;
+                    }
+                }
+
+                const pVt = getCleanNum(rVt[5]);
+                const pTiger = getCleanNum(rTiger[5]);
+                const pSp500 = getCleanNum(rSp500[5]);
+                const pSgi = getCleanNum(rSgi[5]);
+                const pUsd = getCleanNum(rUsd[5]);
+
+                const jVt = getCleanNum(rVt[9]);
+                const jTiger = getCleanNum(rTiger[9]);
+                const jSp500 = getCleanNum(rSp500[9]);
+                const jSgi = getCleanNum(rSgi[9]);
+                const jUsd = getCleanNum(rUsd[9]);
+
+                if (pVt > 0) {
+                    liveData.vt.price = pVt;
+                    if (jVt > 0) { liveData.vt.prev = jVt; liveData.vt.change = pVt - jVt; liveData.vt.percent = (liveData.vt.change / jVt) * 100; }
+                }
+                if (pTiger > 0) {
+                    liveData.tiger.price = pTiger;
+                    if (jTiger > 0) { liveData.tiger.prev = jTiger; liveData.tiger.change = pTiger - jTiger; liveData.tiger.percent = (liveData.tiger.change / jTiger) * 100; }
+                }
+                if (pSp500 > 0) {
+                    liveData.sp500.price = pSp500;
+                    if (jSp500 > 0) { liveData.sp500.prev = jSp500; liveData.sp500.change = pSp500 - jSp500; liveData.sp500.percent = (liveData.sp500.change / jSp500) * 100; }
+                }
+                if (pSgi > 0) {
+                    liveData.sgi.price = pSgi;
+                    if (jSgi > 0) { liveData.sgi.prev = jSgi; liveData.sgi.change = pSgi - jSgi; liveData.sgi.percent = (liveData.sgi.change / jSgi) * 100; }
+                }
+                if (pUsd > 0) {
+                    liveData.usdKrw.price = pUsd;
+                    if (jUsd > 0) { liveData.usdKrw.prev = jUsd; liveData.usdKrw.change = pUsd - jUsd; liveData.usdKrw.percent = (liveData.usdKrw.change / jUsd) * 100; }
+                }
+
+                // 총 평가금액 계산
+                const vtTotal = QUANTITY.VT * liveData.vt.price;
+                const tigerTotal = QUANTITY.TIGER * liveData.tiger.price;
+                const sp500Total = QUANTITY.SP500 * liveData.sp500.price;
+                const sgiTotal = QUANTITY.SGI * liveData.sgi.price;
+                const totalStockVal = vtTotal + tigerTotal + sp500Total + sgiTotal || 1;
+
+                // 1) VT 분할 산출 (SJ 2034 증여분 vs JY 비과세 이전분)
+                let vtSjQ = stockMemberData.VT.sjQty;
+                let vtJyQ = stockMemberData.VT.jyQty;
+                if (vtSjQ === 0 && vtJyQ === 0) {
+                    const sjRatio = (sheetAssets.vtSjAmount > 0 && sheetAssets.vtJyAmount > 0)
+                        ? (sheetAssets.vtSjAmount / (sheetAssets.vtSjAmount + sheetAssets.vtJyAmount))
+                        : 0.645; // 플랜 기본 비중
+                    vtSjQ = Math.round(QUANTITY.VT * sjRatio);
+                    vtJyQ = QUANTITY.VT - vtSjQ;
+                }
+                const vtSjVal = vtSjQ * liveData.vt.price;
+                const vtJyVal = vtJyQ * liveData.vt.price;
+                const vtSjRatio = vtTotal > 0 ? (vtSjVal / vtTotal * 100) : 64.5;
+                const vtJyRatio = 100 - vtSjRatio;
+
+                document.getElementById('vtQtyVal').innerText = `${QUANTITY.VT.toLocaleString()}주`;
+                document.getElementById('vtPriceVal').innerText = `₩${Math.round(liveData.vt.price).toLocaleString()}`;
+                document.getElementById('vtTotalVal').innerText = `₩${(vtTotal/100000000).toFixed(2)}억`;
+                document.getElementById('vtShareRatio').innerText = `비중 ${(vtTotal/totalStockVal*100).toFixed(1)}%`;
+                document.getElementById('vtQtySj').innerText = `${vtSjQ.toLocaleString()}주`;
+                document.getElementById('vtValSj').innerText = `₩${(vtSjVal/100000000).toFixed(2)}억`;
+                document.getElementById('vtRatioSj').innerText = `${vtSjRatio.toFixed(1)}%`;
+                document.getElementById('vtQtyJy').innerText = `${vtJyQ.toLocaleString()}주`;
+                document.getElementById('vtValJy').innerText = `₩${(vtJyVal/100000000).toFixed(2)}억`;
+                document.getElementById('vtRatioJy').innerText = `${vtJyRatio.toFixed(1)}%`;
+                document.getElementById('vtSplitBarSj').style.width = `${vtSjRatio}%`;
+                document.getElementById('vtSplitBarJy').style.width = `${vtJyRatio}%`;
+
+                // 2) TIGER 토탈월드 분할 산출 (50:50 부부 연금저축/ISA 균등)
+                let tigerSjQ = stockMemberData.TIGER.sjQty || Math.round(QUANTITY.TIGER * 0.5);
+                let tigerJyQ = QUANTITY.TIGER - tigerSjQ;
+                const tigerSjVal = tigerSjQ * liveData.tiger.price;
+                const tigerJyVal = tigerJyQ * liveData.tiger.price;
+
+                document.getElementById('tigerQtyVal').innerText = `${QUANTITY.TIGER.toLocaleString()}주`;
+                document.getElementById('tigerPriceVal').innerText = `₩${Math.round(liveData.tiger.price).toLocaleString()}`;
+                document.getElementById('tigerTotalVal').innerText = `₩${(tigerTotal/100000000).toFixed(2)}억`;
+                document.getElementById('tigerShareRatio').innerText = `비중 ${(tigerTotal/totalStockVal*100).toFixed(1)}%`;
+                document.getElementById('tigerQtySj').innerText = `${tigerSjQ.toLocaleString()}주`;
+                document.getElementById('tigerValSj').innerText = `₩${(tigerSjVal/100000000).toFixed(2)}억`;
+                document.getElementById('tigerRatioSj').innerText = `50.0%`;
+                document.getElementById('tigerQtyJy').innerText = `${tigerJyQ.toLocaleString()}주`;
+                document.getElementById('tigerValJy').innerText = `₩${(tigerJyVal/100000000).toFixed(2)}억`;
+                document.getElementById('tigerRatioJy').innerText = `50.0%`;
+
+                // 3) Kodex S&P500 분할 산출 (50:50 기존 절세 적립분)
+                let spSjQ = stockMemberData.SP500.sjQty || Math.round(QUANTITY.SP500 * 0.5);
+                let spJyQ = QUANTITY.SP500 - spSjQ;
+                const spSjVal = spSjQ * liveData.sp500.price;
+                const spJyVal = spJyQ * liveData.sp500.price;
+
+                document.getElementById('sp500QtyVal').innerText = `${QUANTITY.SP500.toLocaleString()}주`;
+                document.getElementById('sp500PriceVal').innerText = `₩${Math.round(liveData.sp500.price).toLocaleString()}`;
+                document.getElementById('sp500TotalVal').innerText = `₩${(sp500Total/100000000).toFixed(2)}억`;
+                document.getElementById('sp500ShareRatio').innerText = `비중 ${(sp500Total/totalStockVal*100).toFixed(1)}%`;
+                document.getElementById('sp500QtySj').innerText = `${spSjQ.toLocaleString()}주`;
+                document.getElementById('sp500ValSj').innerText = `₩${(spSjVal/100000000).toFixed(2)}억`;
+                document.getElementById('sp500RatioSj').innerText = `50.0%`;
+                document.getElementById('sp500QtyJy').innerText = `${spJyQ.toLocaleString()}주`;
+                document.getElementById('sp500ValJy').innerText = `₩${(spJyVal/100000000).toFixed(2)}억`;
+                document.getElementById('sp500RatioJy').innerText = `50.0%`;
+
+                // 4) SGI서울보증 (SJ 100% 우리사주)
+                document.getElementById('sgiQtyVal').innerText = `${QUANTITY.SGI.toLocaleString()}주`;
+                document.getElementById('sgiPriceVal').innerText = `₩${Math.round(liveData.sgi.price).toLocaleString()}`;
+                document.getElementById('sgiTotalVal').innerText = `₩${(sgiTotal/100000000).toFixed(2)}억`;
+                document.getElementById('sgiShareRatio').innerText = `비중 ${(sgiTotal/totalStockVal*100).toFixed(1)}%`;
+                document.getElementById('sgiQtySj').innerText = `${QUANTITY.SGI.toLocaleString()}주`;
+                document.getElementById('sgiValSj').innerText = `₩${(sgiTotal/100000000).toFixed(2)}억`;
+
+                // 5) 트래커 상단 3단 종합 요약 지표 업데이트
+                const totalSjStocksVal = vtSjVal + tigerSjVal + spSjVal + sgiTotal;
+                const totalJyStocksVal = vtJyVal + tigerJyVal + spJyVal;
+                const totalStockSum = totalSjStocksVal + totalJyStocksVal || 1;
+
+                document.getElementById('totalStockValHeader').innerText = `₩${(totalStockSum/100000000).toFixed(2)}억`;
+                document.getElementById('totalSjValHeader').innerText = `₩${(totalSjStocksVal/100000000).toFixed(2)}억`;
+                document.getElementById('totalSjRatioHeader').innerText = `지분 ${(totalSjStocksVal/totalStockSum*100).toFixed(1)}%`;
+                document.getElementById('totalJyValHeader').innerText = `₩${(totalJyStocksVal/100000000).toFixed(2)}억`;
+                document.getElementById('totalJyRatioHeader').innerText = `지분 ${(totalJyStocksVal/totalStockSum*100).toFixed(1)}%`;
+
+                // 과거 이력 수량 맵 빌드
+                let dates = [], historyQtyMap = {};
+                for (let i = 5; i < lines.length; i++) {
+                    let row = lines[i];
+                    if (!row || row.length < 5) continue;
+                    let normDate = normalizeDateStr(row[0]);
+
+                    if (normDate) {
+                        let vtQ = 0, spQ = 0, tigerQ = 0, sgiQ = 0;
+                        for (let j = 0; j < 8 && (i + j) < lines.length; j++) {
+                            let subRow = lines[i + j];
+                            if (!subRow) continue;
+                            if (j > 0 && normalizeDateStr(subRow[0])) break;
+
+                            let rowName = (subRow[1] || '').toUpperCase();
+                            let qty = getCleanNum(subRow[4]);
+
+                            if (rowName.includes('VT')) { vtQ = qty; }
+                            else if (rowName.includes('토탈월드') || rowName.includes('TIGER')) { tigerQ = qty; }
+                            else if (rowName.includes('S&P') || rowName.includes('KODEX')) { spQ = qty; }
+                            else if (rowName.includes('SGI')) { sgiQ = qty; }
+                        }
+                        historyQtyMap[normDate] = { VT: vtQ, TIGER: tigerQ, SP500: spQ, SGI: sgiQ };
+                        if (!dates.includes(normDate)) dates.push(normDate);
+                    }
+                }
+
+                updateStockQtyDiffs(historyQtyMap, dates);
+            } catch (e) {
+                console.log("보글헤드 시트 파싱 실패:", e);
+            }
+        }
+
+        // 주식 소유자 필터 토글 함수 (Kubera / Monarch 인터랙션)
+        function setStockOwnerFilter(filter) {
+            const btnAll = document.getElementById('btnFilterAll');
+            const btnSj = document.getElementById('btnFilterSj');
+            const btnJy = document.getElementById('btnFilterJy');
+
+            const inactiveClass = "px-3 py-1 text-xs font-bold rounded-lg transition-all text-gray-600 hover:text-gray-900";
+            btnAll.className = inactiveClass;
+            btnSj.className = inactiveClass;
+            btnJy.className = inactiveClass;
+
+            if (filter === 'ALL') {
+                btnAll.className = "px-3 py-1 text-xs font-bold rounded-lg transition-all bg-white text-gray-900 shadow-sm";
+            } else if (filter === 'SJ') {
+                btnSj.className = "px-3 py-1 text-xs font-bold rounded-lg transition-all bg-indigo-600 text-white shadow-sm";
+            } else if (filter === 'JY') {
+                btnJy.className = "px-3 py-1 text-xs font-bold rounded-lg transition-all bg-purple-600 text-white shadow-sm";
+            }
+
+            document.querySelectorAll('.box-sj').forEach(el => {
+                if (filter === 'SJ') {
+                    el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-100/90');
+                    el.classList.remove('opacity-40');
+                } else if (filter === 'JY') {
+                    el.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-100/90');
+                    el.classList.add('opacity-40');
+                } else {
+                    el.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-100/90', 'opacity-40');
+                }
+            });
+
+            document.querySelectorAll('.box-jy').forEach(el => {
+                if (filter === 'JY') {
+                    el.classList.add('ring-2', 'ring-purple-500', 'bg-purple-100/90');
+                    el.classList.remove('opacity-40');
+                } else if (filter === 'SJ') {
+                    el.classList.remove('ring-2', 'ring-purple-500', 'bg-purple-100/90');
+                    el.classList.add('opacity-40');
+                } else {
+                    el.classList.remove('ring-2', 'ring-purple-500', 'bg-purple-100/90', 'opacity-40');
+                }
+            });
+        }
+
+        function updateStockQtyDiffs(historyMap, dates) {
+            const ids = ['vtQtyDiffYtd', 'tigerQtyDiffYtd', 'sp500QtyDiffYtd', 'sgiQtyDiffYtd'];
+            if (!dates || dates.length === 0) {
+                ids.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) { el.innerText = "-"; el.className = "text-gray-400 font-normal"; }
+                });
+                return;
+            }
+
+            let nowYear = String(new Date().getFullYear()).substring(2);
+            let thisYearDates = dates.filter(d => d.startsWith(nowYear));
+            thisYearDates.sort();
+
+            let ytdKey = historyMap[`${nowYear}.01.01`] ? `${nowYear}.01.01` : (thisYearDates[0] || null);
+            let baseObj = ytdKey ? historyMap[ytdKey] : null;
+
+            function renderDiffBadge(elemId, currentQty, baseDataObj, stockKey) {
+                const elem = document.getElementById(elemId);
+                if (!elem) return;
+
+                if (!baseDataObj) {
+                    elem.innerText = "-";
+                    elem.className = "text-gray-400 font-normal";
+                    return;
+                }
+
+                const baseQty = (baseDataObj[stockKey] !== undefined) ? baseDataObj[stockKey] : 0;
+                const diff = currentQty - baseQty;
+                const sign = diff > 0 ? "+" : "";
+                
+                let colorClass = "text-emerald-600 font-extrabold";
+                if (diff < 0) colorClass = "text-red-500 font-extrabold";
+                else if (diff === 0) colorClass = "text-gray-500 font-medium";
+
+                elem.innerText = `${sign}${diff.toLocaleString()}주`;
+                elem.className = colorClass;
+            }
+
+            renderDiffBadge('vtQtyDiffYtd', QUANTITY.VT, baseObj, 'VT');
+            renderDiffBadge('tigerQtyDiffYtd', QUANTITY.TIGER, baseObj, 'TIGER');
+            renderDiffBadge('sp500QtyDiffYtd', QUANTITY.SP500, baseObj, 'SP500');
+            renderDiffBadge('sgiQtyDiffYtd', QUANTITY.SGI, baseObj, 'SGI');
+        }
+
+        async function fetchPreviousNetAssetFromHistory() {
+            const possibleSheetNames = ['일별순자산', '일별순자산기록'];
+            for (let sheetName of possibleSheetNames) {
+                const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(sheetName)}`;
+                try {
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    const csvText = await res.text();
+                    const lines = csvText.split('\n').map(l => parseCSVLine(l)).filter(r => r.length >= 2);
+                    
+                    if (lines.length > 1) {
+                        let validData = [];
+                        for (let i = 1; i < lines.length; i++) {
+                            let dateVal = lines[i][0].replace(/"/g, '').trim();
+                            let val = getCleanNum(lines[i][1]);
+                            if (val > 0) validData.push({ date: dateVal, val: val });
+                        }
+                        if (validData.length > 0) {
+                            let lastEntry = validData[validData.length - 1];
+                            let prevVal = lastEntry.val;
+                            let now = new Date();
+                            let todayFormatted = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+                            if (lastEntry.date.includes(todayFormatted) && validData.length > 1) {
+                                prevVal = validData[validData.length - 2].val;
+                            }
+                            return prevVal;
+                        }
+                    }
+                } catch (e) {}
+            }
+            return null;
+        }
+
+        async function fetchAccountBookReport() {
+            const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('가계부')}`;
+            try {
+                const res = await fetch(url);
+                if (!res.ok) return;
+                const csvText = await res.text();
+                const lines = csvText.split('\n').map(l => parseCSVLine(l));
+
+                let monthlyRecords = [], currentYearRecord = null;
+
+                for (let i = 0; i < lines.length; i++) {
+                    let row = lines[i];
+                    if (!row || row.length < 11) continue;
+                    let dateStr = row[0] ? row[0].replace(/"/g, '').trim() : '';
+
+                    if (dateStr.includes('월') && !dateStr.endsWith('년')) monthlyRecords.push(row);
+                    else if (dateStr.includes('2026년')) currentYearRecord = row;
+                }
+
+                if (monthlyRecords.length > 0) {
+                    const latest = monthlyRecords[monthlyRecords.length - 1];
+                    const monthLabel = latest[0].replace(/"/g, '').trim();
+                    const savingsAmount = getCleanNum(latest[2]);
+                    const incomeAmount = getCleanNum(latest[3]);
+                    const spendingAmount = getCleanNum(latest[6]);
+                    
+                    let savingsRate = getCleanNum(latest[9]);
+                    if (savingsRate <= 1 && savingsRate > 0) savingsRate *= 100;
+
+                    let divCoverage = getCleanNum(latest[10]);
+                    if (divCoverage <= 1 && divCoverage > 0) divCoverage *= 100;
+
+                    const targetSpending = 2753145;
+                    const spendingDiff = targetSpending - spendingAmount;
+                    const spendingDiffMan = Math.round(Math.abs(spendingDiff) / 10000);
+                    const spendingBadge = spendingDiff >= 0 
+                        ? `<span class="text-emerald-600 font-bold">목표 대비 +${spendingDiffMan}만 절약 🎉</span>` 
+                        : `<span class="text-red-500 font-bold">목표 대비 -${spendingDiffMan}만 초과 ⚠️</span>`;
+
+                    document.getElementById('abMonthLabel').innerText = `${monthLabel} 확정 데이터`;
+                    document.getElementById('abSavingsRate').innerText = `${savingsRate.toFixed(1)}%`;
+                    document.getElementById('abSavingsAmount').innerText = `월 ${Math.round(savingsAmount / 10000).toLocaleString()}만 원 저축 완료`;
+                    document.getElementById('abDivCoverage').innerText = `${divCoverage.toFixed(1)}%`;
+                    
+                    document.getElementById('abIncomeSpending').innerHTML = `
+                        수입 <b>${Math.round(incomeAmount / 10000).toLocaleString()}만 원</b> / 
+                        지출 <b>${Math.round(spendingAmount / 10000).toLocaleString()}만 원</b> 
+                        <span class="block text-[10px] mt-0.5">${spendingBadge}</span>
+                    `;
+                }
+
+                if (currentYearRecord) {
+                    const ytdSavings = getCleanNum(currentYearRecord[2]);
+                    let ytdRate = getCleanNum(currentYearRecord[9]);
+                    if (ytdRate <= 1 && ytdRate > 0) ytdRate *= 100;
+
+                    const ytdContainer = document.getElementById('abYtdSummary');
+                    if (ytdContainer) {
+                        ytdContainer.innerHTML = `
+                            <div class="mt-2 pt-2 border-t border-gray-100 flex justify-between items-center text-[11px] bg-indigo-50/40 p-2 rounded-lg border border-indigo-100/60">
+                                <span class="font-bold text-indigo-900 flex items-center gap-1">
+                                    <span>🗓️</span>
+                                    <span>2026년 누적 가계부 체력:</span>
+                                </span>
+                                <span class="text-gray-700">
+                                    누적 저축 <b class="text-indigo-700 font-extrabold">${Math.round(ytdSavings / 10000).toLocaleString()}만 원</b> 
+                                    (평균 저축률 <b class="text-indigo-700 font-bold">${ytdRate.toFixed(1)}%</b>)
+                                </span>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (e) {
+                console.log("가계부 연동 실패:", e);
+            }
+        }
+
+        const editorialsData = [
+            { name: "한국경제 사설", url: "https://www.hankyung.com/opinion" },
+            { name: "매일경제 사설", url: "https://www.mk.co.kr/opinion" },
+            { name: "조선일보 사설", url: "https://www.chosun.com/opinion/" },
+            { name: "중앙일보 사설", url: "https://www.joongang.co.kr/opinion" },
+            { name: "한겨레 사설", url: "https://www.hani.co.kr/arti/opinion/home01.html" },
+            { name: "경향신문 사설", url: "https://www.khan.co.kr/opinion" }
+        ];
+
+        function loadRandomEditorials() {
+            const shuffled = [...editorialsData].sort(() => 0.5 - Math.random());
+            const container = document.getElementById('editorialsContainer');
+            if (!container) return;
+            container.innerHTML = shuffled.map((item, idx) => `
+                <div class="p-2 bg-slate-800/80 rounded border border-slate-700 flex justify-between items-center">
+                    <div>
+                        <span class="text-[9px] bg-indigo-900 text-indigo-200 px-1 rounded">순번 ${idx + 1}</span>
+                        <h3 class="font-bold text-white mt-0.5 text-[11px]">${item.name}</h3>
+                    </div>
+                    <a href="${item.url}" target="_blank" rel="noopener noreferrer" class="px-2 py-1 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-semibold rounded shrink-0 ml-2 transition-colors">보기 ↗</a>
+                </div>
+            `).join('');
+        }
+
+        function updateDebtProgressBar(currentDebt) {
+            const initialDebt = 300000000;
+            const repaid = Math.max(0, initialDebt - currentDebt);
+            const rate = Math.min(100, Math.max(0, (repaid / initialDebt) * 100));
+
+            const barElem = document.getElementById('debtProgressBar');
+            const rateElem = document.getElementById('debtProgressRateText');
+            const repaidElem = document.getElementById('debtRepaidText');
+            const remainingElem = document.getElementById('debtRemainingText');
+
+            if (barElem) barElem.style.width = `${rate}%`;
+            if (rateElem) rateElem.innerText = `${rate.toFixed(1)}% 완료`;
+            if (repaidElem) repaidElem.innerText = `상환 완료: ₩${Math.round(repaid / 10000).toLocaleString()}만 원`;
+            if (remainingElem) remainingElem.innerText = `남은 잔액: ₩${(currentDebt / 100000000).toFixed(2)}억 원`;
+        }
+
+        function updateDynamicFireTimeline(currentNetAssets, stockAssets) {
+            const annualInvestment = 74000000;
+            const annualDebtRepay = 16000000;
+            const annualTotalCashflow = annualInvestment + annualDebtRepay;
+            const monthlyInvest = annualInvestment / 12;
+            const monthlyTotalCash = annualTotalCashflow / 12;
+            const now = new Date();
+
+            function calcMonthsToGoal(annualRate) {
+                let n = currentNetAssets;
+                let e = stockAssets;
+                let m = 0;
+                let monthlyRate = Math.pow(1 + annualRate, 1/12) - 1;
+
+                while (m < 240) {
+                    let futureDate = new Date(now.getFullYear(), now.getMonth() + m, 1);
+                    let futureYear = futureDate.getFullYear();
+                    let target = FIRE_GOALS[futureYear] || (2000000000 * Math.pow(1.03, futureYear - 2025));
+
+                    if (n >= target && m > 0) return { months: m, targetYear: futureYear, targetNet: target };
+
+                    let growth = e * monthlyRate;
+                    e += growth + monthlyInvest;
+                    n += growth + monthlyTotalCash;
+                    m++;
+                }
+                return { months: m, targetYear: 2029, targetNet: 2251017620 };
+            }
+
+            function getFutureDateInfo(resObj) {
+                const future = new Date(now.getFullYear(), now.getMonth() + resObj.months, 1);
+                return {
+                    yearMonth: `${future.getFullYear()}년 ${future.getMonth() + 1}월`,
+                    year: future.getFullYear(),
+                    month: future.getMonth() + 1,
+                    years: `(약 ${(resObj.months/12).toFixed(1)}년 후)`,
+                    targetNet: resObj.targetNet
+                };
+            }
+
+            const resCons = calcMonthsToGoal(0.065);
+            const resBase = calcMonthsToGoal(0.085);
+            const resOpt = calcMonthsToGoal(0.115);
+
+            const dCons = getFutureDateInfo(resCons);
+            const dBase = getFutureDateInfo(resBase);
+            const dOpt = getFutureDateInfo(resOpt);
+
+            const futureBase = new Date(now.getFullYear(), now.getMonth() + resBase.months, 1);
+            const daysDiff = Math.ceil((futureBase.getTime() - now.getTime()) / (1000 * 3600 * 24));
+
+            const targetYear = dBase.year;
+            const targetNetEok = (dBase.targetNet / 100000000).toFixed(2);
+
+            document.getElementById('fireDdayText').innerText = `D-${daysDiff.toLocaleString()}일`;
+            document.getElementById('fireDdayDateSub').innerText = `${targetYear}년 ${targetNetEok}억 목표 도달 예정일: ${dBase.yearMonth}`;
+            document.getElementById('dynamicFireBaseMain').innerText = `${dBase.yearMonth} ${dBase.years}`;
+            document.getElementById('dynamicFireGapSub').innerText = `연 9,000만 순자산 개선 + SWR 2.5% 영구 보존 적용`;
+
+            document.getElementById('dynamicFireCons').innerText = dCons.yearMonth;
+            document.getElementById('dynamicFireConsYears').innerText = dCons.years;
+
+            document.getElementById('dynamicFireBase').innerText = dBase.yearMonth;
+            document.getElementById('dynamicFireBaseYears').innerText = dBase.years;
+
+            document.getElementById('dynamicFireOpt').innerText = dOpt.yearMonth;
+            document.getElementById('dynamicFireOptYears').innerText = dOpt.years;
+
+            renderMilestones(currentNetAssets, stockAssets, dBase.yearMonth, targetNetEok);
+            syncTargetYearAcrossDashboard(targetYear, dBase.targetNet);
+        }
+
+        function renderMilestones(currentNet, currentStock, fireYearMonthStr, targetNetEok) {
+            const baseRate = 0.085;
+            const monthlyRate = Math.pow(1 + baseRate, 1/12) - 1;
+            const monthlyInvest = 74000000 / 12;
+            const monthlyTotalCash = 90000000 / 12;
+
+            const targets = {
+                '2027-01': 0,
+                '2027-07': 0,
+                '2028-01': 0,
+                '2028-07': 0,
+                '2029-01': 0
+            };
+
+            let now = new Date();
+            let curYear = now.getFullYear();
+            let curMonth = now.getMonth() + 1;
+
+            let n = currentNet;
+            let e = currentStock;
+
+            for (let m = 1; m <= 48; m++) {
+                let growth = e * monthlyRate;
+                e += growth + monthlyInvest;
+                n += growth + monthlyTotalCash;
+
+                let simDate = new Date(curYear, (curMonth - 1) + m, 1);
+                let y = simDate.getFullYear();
+                let mo = String(simDate.getMonth() + 1).padStart(2, '0');
+                let key = `${y}-${mo}`;
+
+                if (targets.hasOwnProperty(key) && targets[key] === 0) {
+                    targets[key] = n;
+                }
+            }
+
+            document.getElementById('msCur').innerText = `${(currentNet / 100000000).toFixed(2)}억`;
+            document.getElementById('ms2701').innerText = targets['2027-01'] > 0 ? `${(targets['2027-01'] / 100000000).toFixed(2)}억` : '-';
+            document.getElementById('ms2707').innerText = targets['2027-07'] > 0 ? `${(targets['2027-07'] / 100000000).toFixed(2)}억` : '-';
+            document.getElementById('ms2801').innerText = targets['2028-01'] > 0 ? `${(targets['2028-01'] / 100000000).toFixed(2)}억` : '-';
+            document.getElementById('ms2807').innerText = targets['2028-07'] > 0 ? `${(targets['2028-07'] / 100000000).toFixed(2)}억` : '-';
+            document.getElementById('ms2901').innerText = targets['2029-01'] > 0 ? `${(targets['2029-01'] / 100000000).toFixed(2)}억` : '-';
+
+            document.getElementById('msFireLabel').innerText = fireYearMonthStr;
+            document.getElementById('msFireVal').innerText = `${targetNetEok}억`;
+        }
+
+        // 🎯 파이어 시점 연도 및 배당금·비고 전체 대시보드 동적 연동
+        function syncTargetYearAcrossDashboard(targetYear, targetNet) {
+            const targetNetEok = (targetNet / 100000000).toFixed(2);
+            const userAge = targetYear - 1986; // 1986년생 기준
+
+            const navYearElem = document.getElementById('navTargetYear');
+            if (navYearElem) navYearElem.innerText = targetYear;
+
+            const headYearElem = document.getElementById('roadmapTargetYearHead');
+            if (headYearElem) headYearElem.innerText = targetYear;
+
+            const subYearElem = document.getElementById('roadmapTargetYearSub');
+            if (subYearElem) subYearElem.innerText = targetYear;
+
+            const thYearElem = document.getElementById('roadmapThYear');
+            if (thYearElem) thYearElem.innerText = targetYear;
+
+            const thAgeElem = document.getElementById('roadmapThAge');
+            if (thAgeElem) thAgeElem.innerText = userAge;
+
+            const badgeElem = document.getElementById('sheetRoadmapStatusBadge');
+            if (badgeElem) badgeElem.innerText = `${targetYear}년 무부채 완성 🟢`;
+
+            const debtNoteElem = document.getElementById('cell_debt_note');
+            if (debtNoteElem) debtNoteElem.innerText = `${targetYear}년 무부채 완전 달성 🎉`;
+
+            const spendNoteElem = document.getElementById('cell_spend_note');
+            if (spendNoteElem) spendNoteElem.innerText = "전체 주식의 2.5%(세후)";
+
+            const divCellElem = document.getElementById('cell_div_fire');
+            if (divCellElem) {
+                if (DIVIDEND_BY_YEAR[targetYear]) {
+                    divCellElem.innerText = DIVIDEND_BY_YEAR[targetYear];
+                } else {
+                    const estimatedMonthly = Math.round((targetNet * 0.8 * 0.0163) / 12 / 10000 * 10) / 10;
+                    divCellElem.innerText = `${estimatedMonthly.toFixed(1)}만 원`;
+                }
+            }
+
+            if (roadmapDataByYear[targetYear]) {
+                const d = roadmapDataByYear[targetYear];
+                if (d.tot) document.getElementById('cell_tot_fire').innerText = formatEokStr(d.tot);
+                if (d.re) document.getElementById('cell_re_fire').innerText = formatEokStr(d.re);
+                if (d.stockDirect) document.getElementById('cell_stock_direct_fire').innerText = formatEokStr(d.stockDirect);
+                if (d.stockPension) document.getElementById('cell_stock_pension_fire').innerText = formatEokStr(d.stockPension);
+                if (d.cash) document.getElementById('cell_cash_fire').innerText = formatEokStr(d.cash);
+                if (d.net) document.getElementById('cell_net_fire').innerText = formatEokStr(d.net);
+                if (d.spend) {
+                    const man = d.spend > 100000 ? Math.round(d.spend / 10000) : Math.round(d.spend * 10000);
+                    document.getElementById('cell_spend_fire').innerText = `${man.toLocaleString()}만 원`;
+                }
+            }
+
+            if (historyChart) {
+                historyChart.data.labels[historyChart.data.labels.length - 1] = `${String(targetYear).substring(2)}.12(목표)`;
+                historyChart.data.datasets[0].data[historyChart.data.datasets[0].data.length - 1] = parseFloat(targetNetEok);
+                historyChart.update();
+            }
+
+            const masterBadge = document.getElementById('masterplanTargetBadge');
+            if (masterBadge) masterBadge.innerText = `${targetYear}년 ${targetNetEok}억 완성`;
+
+            const planTitle = document.getElementById('fireDdayPlanTitle');
+            if (planTitle) planTitle.innerHTML = `<span>2️⃣</span><span>${targetYear}년 (FIRE D-Day): 시장 점검 ➔ 주거 결정 & 공식 은퇴</span>`;
+        }
+
+        function updateUsdSensitivity() {
+            const currentNet = sheetAssets.netAssets;
+            const currentFx = liveData.usdKrw.price || 1378;
+            const vtAssets = sheetAssets.stockDirect * 0.65;
+            const currRound = Math.round(currentFx);
+
+            let baseRates = [1300, 1350, 1400, 1450, 1500, 1550].filter(r => Math.abs(r - currRound) > 8);
+            baseRates.push(currRound);
+            baseRates.sort((a, b) => a - b);
+            const targetRates = baseRates;
+
+            const tbody = document.getElementById('usdSensitivityTableBody');
+            if (!tbody) return;
+
+            tbody.innerHTML = targetRates.map(rate => {
+                const diffRate = rate - currentFx;
+                const netChange = (vtAssets / currentFx) * diffRate;
+                const estNetAssets = currentNet + netChange;
+                const isCurrent = (rate === currRound) || Math.abs(rate - currentFx) < 1;
+                const estEok = (estNetAssets / 100000000).toFixed(2);
+                const diffEok = (netChange / 100000000).toFixed(2);
+
+                let diffText = "기준 환율";
+                let diffClass = "text-amber-200/80";
+                if (netChange > 0) { diffText = `+${diffEok}억 원`; diffClass = "text-emerald-400 font-bold"; }
+                else if (netChange < 0) { diffText = `${diffEok}억 원`; diffClass = "text-amber-400 font-semibold"; }
+
+                return `
+                    <tr class="${isCurrent ? 'bg-amber-900/60 font-bold border-l-2 border-amber-400' : ''}">
+                        <td class="py-1.5 pl-1 whitespace-nowrap">${rate.toLocaleString()}원 ${isCurrent ? '<span class="text-[9px] bg-amber-800 text-amber-200 px-1 rounded ml-1">현재</span>' : ''}</td>
+                        <td class="py-1.5 text-right font-bold text-white whitespace-nowrap">${estEok}억 원</td>
+                        <td class="py-1.5 text-right ${diffClass} whitespace-nowrap">${diffText}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function renderChangeTag(elementId, changeVal, percentVal) {
+            const elem = document.getElementById(elementId);
+            if (!elem) return;
+            
+            if (changeVal === undefined || percentVal === undefined || isNaN(changeVal) || isNaN(percentVal)) {
+                elem.className = "block text-[10px] font-medium mt-0.5 text-gray-400";
+                elem.innerText = "(변동률 집계 중)";
+                return;
+            }
+
+            const isPositive = changeVal > 0;
+            const isNegative = changeVal < 0;
+            let colorClass = 'text-gray-500';
+            let sign = '';
+            if (isPositive) { colorClass = 'text-red-500'; sign = '+'; }
+            else if (isNegative) { colorClass = 'text-blue-500'; sign = '-'; }
+            
+            const absChange = Math.abs(changeVal);
+            const formattedChange = `₩${Math.round(absChange).toLocaleString()}`;
+            elem.className = `block text-[10px] font-medium mt-0.5 ${colorClass}`;
+            elem.innerText = `(${sign}${formattedChange}, ${sign}${Math.abs(percentVal).toFixed(1)}%)`;
+        }
+
+        async function calculateNetAssetsChange() {
+            const liveNet = sheetAssets.netAssets;
+            let prevNet = await fetchPreviousNetAssetFromHistory();
+            let totalNetChange = 0;
+
+            const vtDiff = (liveData.vt.change || 0) * QUANTITY.VT;
+            const tigerDiff = (liveData.tiger.change || 0) * QUANTITY.TIGER;
+            const spDiff = (liveData.sp500.change || 0) * QUANTITY.SP500;
+            const sgiDiff = (liveData.sgi.change || 0) * QUANTITY.SGI;
+            const rawStockSum = vtDiff + tigerDiff + spDiff + sgiDiff;
+
+            if (prevNet && prevNet > 0 && Math.abs(prevNet - liveNet) > 100) {
+                totalNetChange = liveNet - prevNet;
+            } else {
+                totalNetChange = rawStockSum;
+            }
+
+            return totalNetChange;
+        }
+
+        function updateCagrTable(netAssetDiff) {
+            const liveNet = sheetAssets.netAssets;
+            const BASE_ASSETS = { y2002: 520000000, ytd: 1409000000 };
+
+            function formatRowUI(changeId, returnId, cagrId, baseAmount, years) {
+                const changeElem = document.getElementById(changeId);
+                const returnElem = document.getElementById(returnId);
+                const cagrElem = cagrId ? document.getElementById(cagrId) : null;
+                if (!changeElem || !returnElem) return;
+
+                const diff = liveNet - baseAmount;
+                const returnRate = (diff / baseAmount) * 100;
+                const isPositive = diff > 0, isNegative = diff < 0;
+                let colorClass = "text-gray-500", sign = "";
+                if (isPositive) { colorClass = "text-red-600"; sign = "+"; }
+                else if (isNegative) { colorClass = "text-blue-600"; sign = "-"; }
+
+                const diffInEok = (diff / 100000000).toFixed(2);
+                changeElem.className = `py-2.5 px-2 text-right font-bold whitespace-nowrap ${colorClass}`;
+                changeElem.innerText = `${sign}${diffInEok}억`;
+
+                returnElem.className = `py-2.5 px-2 text-right font-semibold whitespace-nowrap ${colorClass}`;
+                returnElem.innerText = `${sign}${Math.abs(returnRate).toFixed(1)}%`;
+
+                if (cagrElem && years > 0) {
+                    const cagrRate = (Math.pow(liveNet / baseAmount, 1 / years) - 1) * 100;
+                    const cagrPositive = cagrRate > 0;
+                    const cagrSign = cagrPositive ? "+" : (cagrRate < 0 ? "-" : "");
+                    const cagrColor = cagrPositive ? "text-red-600" : (cagrRate < 0 ? "text-blue-600" : "text-gray-500");
+
+                    cagrElem.className = `py-2.5 px-2 text-right font-bold whitespace-nowrap ${cagrColor}`;
+                    cagrElem.innerText = `${cagrSign}${Math.abs(cagrRate).toFixed(2)}%`;
+                }
+            }
+
+            formatRowUI('cagr2002Change', 'cagr2002Return', 'cagr2002Cagr', BASE_ASSETS.y2002, 6.5);
+            formatRowUI('cagrYtdChange', 'cagrYtdReturn', 'cagrYtdCagr', BASE_ASSETS.ytd, 0.583);
+        }
+
+        async function initDashboard() {
+            try {
+                await fetchGoogleSheetAssets();
+                await fetchGoogleSheetPricesAndChange();
+
+                const currentYear = new Date().getFullYear();
+                const thisYearTarget = FIRE_GOALS[currentYear] || FIRE_GOALS[2026];
+
+                const netAssets = sheetAssets.netAssets;
+                const totalDebt = sheetAssets.totalDebt;
+                const totalStockValue = sheetAssets.stockDirect + sheetAssets.stockPension;
+
+                const netAssetsElem = document.getElementById('netAssets');
+                if (netAssetsElem) netAssetsElem.innerText = `${(netAssets / 100000000).toFixed(2)}억 원`;
+
+                const targetEok = (thisYearTarget / 100000000).toFixed(2);
+                const shortfallEok = ((thisYearTarget - netAssets) / 100000000).toFixed(2);
+                const isShortfallNegative = (thisYearTarget - netAssets) <= 0;
+
+                const shortfallElem = document.getElementById('netAssetShortfallText');
+                if (shortfallElem) {
+                    shortfallElem.innerText = isShortfallNegative
+                        ? `${currentYear}년 목표 달성 완료! 🎉`
+                        : `${currentYear}년 목표: ${targetEok}억 (부족: ${shortfallEok}억 원)`;
+                }
+
+                document.getElementById('vtTicker').innerText = `₩${Math.round(liveData.vt.price).toLocaleString()}`;
+                document.getElementById('tigerTicker').innerText = `₩${Math.round(liveData.tiger.price).toLocaleString()}`;
+                document.getElementById('sp500Ticker').innerText = `₩${Math.round(liveData.sp500.price).toLocaleString()}`;
+                document.getElementById('sgiTicker').innerText = `₩${Math.round(liveData.sgi.price).toLocaleString()}`;
+                document.getElementById('usdTicker').innerText = `₩${Math.round(liveData.usdKrw.price).toLocaleString()}`;
+
+                renderChangeTag('vtChange', liveData.vt.change, liveData.vt.percent);
+                renderChangeTag('tigerChange', liveData.tiger.change, liveData.tiger.percent);
+                renderChangeTag('sp500Change', liveData.sp500.change, liveData.sp500.percent);
+                renderChangeTag('sgiChange', liveData.sgi.change, liveData.sgi.percent);
+                renderChangeTag('usdChange', liveData.usdKrw.change, liveData.usdKrw.percent);
+
+                const netAssetDiff = await calculateNetAssetsChange();
+                updateCagrTable(netAssetDiff || 0);
+                await fetchAccountBookReport();
+
+                updateDebtProgressBar(totalDebt);
+                updateDynamicFireTimeline(netAssets, totalStockValue);
+                updateUsdSensitivity();
+
+                const now = new Date();
+                const timeStr = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+                document.getElementById('lastUpdatedTime').innerText = `마지막 동기화: ${timeStr}`;
+                document.getElementById('liveStatus').innerHTML = `🟢 ${currentYear}년 목표 ${targetEok}억 & 마스터플랜 실시간 연동 가동 중`;
+            } catch (err) {
+                console.error("Dashboard Init Error:", err);
+            }
+        }
+
+        function initCharts() {
+            if (historyChart) historyChart.destroy();
+            if (dividendMonthlyChart) dividendMonthlyChart.destroy();
+            if (fireDividendMonthlyChart) fireDividendMonthlyChart.destroy();
+
+            const ctx2 = document.getElementById('historyChart').getContext('2d');
+            historyChart = new Chart(ctx2, {
+                type: 'line',
+                data: {
+                    labels: ['20.02', '21.02', '22.03', '23.01', '24.01', '25.01', '26.01', '26.08', '29.12(목표)'],
+                    datasets: [{
+                        label: '순자산 (억 원)',
+                        data: [5.20, 7.46, 5.76, 5.88, 7.92, 10.54, 14.09, 15.59, 22.51],
+                        borderColor: '#2563EB',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false }, datalabels: { display: false } }
+                }
+            });
+
+            // 1) 현재 월별 배당 차트
+            const ctx3 = document.getElementById('dividendMonthlyChart').getContext('2d');
+            dividendMonthlyChart = new Chart(ctx3, {
+                type: 'bar',
+                data: {
+                    labels: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+                    datasets: [{
+                        label: '세후 배당 소득 (만 원)',
+                        data: [0, 212, 157, 1060, 210, 274, 0, 235, 230, 0, 196, 543],
+                        backgroundColor: '#8B5CF6',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    layout: { padding: { top: 20 } },
+                    plugins: {
+                        legend: { display: false },
+                        datalabels: {
+                            anchor: 'end', align: 'top', color: '#6B21A8', font: { weight: 'bold', size: 9 },
+                            formatter: (val) => val > 0 ? val.toLocaleString() + '만' : ''
+                        }
+                    },
+                    scales: { y: { display: false, grace: '15%' }, x: { grid: { display: false } } }
+                }
+            });
+
+            // 2) 파이어(2029년) 시점 예상 배당 차트 (세후 1.63% 기준, VT 50% + TIGER 50%)
+            const ctx4 = document.getElementById('fireDividendMonthlyChart').getContext('2d');
+            fireDividendMonthlyChart = new Chart(ctx4, {
+                type: 'bar',
+                data: {
+                    labels: ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'],
+                    datasets: [
+                        {
+                            label: 'TIGER 토탈월드 (50%)',
+                            data: [0, 368, 0, 0, 368, 0, 0, 368, 0, 0, 368, 0],
+                            backgroundColor: '#0D9488',
+                            borderRadius: 6
+                        },
+                        {
+                            label: 'VT 해외직투 (50%)',
+                            data: [0, 0, 368, 0, 0, 368, 0, 0, 368, 0, 0, 368],
+                            backgroundColor: '#3B82F6',
+                            borderRadius: 6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    layout: { padding: { top: 20 } },
+                    plugins: {
+                        legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                        datalabels: {
+                            anchor: 'end', align: 'top', color: '#1E293B', font: { weight: 'bold', size: 9 },
+                            formatter: (val) => val > 0 ? val.toLocaleString() + '만' : ''
+                        }
+                    },
+                    scales: {
+                        x: { stacked: true, grid: { display: false } },
+                        y: { stacked: true, display: false, grace: '15%' }
+                    }
+                }
+            });
+        }
+
+        async function refreshAllData() {
+            const btn = event?.currentTarget;
+            if (btn) btn.classList.add('animate-spin');
+            await initDashboard();
+            if (btn) setTimeout(() => btn.classList.remove('animate-spin'), 600);
+        }
+
+        window.onload = () => {
+            setTenRandomBogleQuotes();
+            loadRandomEditorials();
+            initCharts();
+            initDashboard();
+        };
+    </script>
+</body>
+</html>
